@@ -25,6 +25,7 @@
     --accent2:#7c5bff;
     --good:#36d399;
     --bad:#ff6b81;
+    --ineq:#ff8a2b;
     --note:#9fb0dc;
     --shadow:0 10px 30px rgba(0,0,0,.45);
     --radius:16px;
@@ -34,7 +35,7 @@
       --bg:#eef2fb; --bg2:#e6ecff; --panel:#ffffff; --panel2:#f1f4ff;
       --line:#c7d0ea; --cell:#ffffff; --cell-sel:#cfe0ff; --cell-peer:#eef3ff;
       --given:#eef1f9; --text:#16203a; --muted:#5a6a8c;
-      --accent:#3b6fff; --accent2:#7c5bff; --note:#5a6a8c;
+      --accent:#3b6fff; --accent2:#7c5bff; --note:#5a6a8c; --ineq:#f4791f;
       --shadow:0 12px 30px rgba(40,60,120,.18);
     }
   }
@@ -113,12 +114,19 @@
   .cell .notes span{display:flex; align-items:center; justify-content:center; font-size:clamp(8px,2.6vw,12px); opacity:.85;}
 
   .ineq{
-    display:flex; align-items:center; justify-content:center;
-    color:var(--accent); font-weight:800; pointer-events:none;
-    font-size:clamp(12px,4vw,20px);
+    display:flex; align-items:center; justify-content:center; pointer-events:none;
   }
-  .ineq.h{}
-  .ineq.v{}
+  /* Solid orange triangles point toward the smaller cell. */
+  .tri{
+    --tw:clamp(8px,2.9vw,13px);   /* half-width of the base */
+    --tl:clamp(10px,3.4vw,15px);  /* length toward the apex  */
+    width:0; height:0;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.45));
+  }
+  .tri.left{ border-top:var(--tw) solid transparent; border-bottom:var(--tw) solid transparent; border-right:var(--tl) solid var(--ineq); }
+  .tri.right{ border-top:var(--tw) solid transparent; border-bottom:var(--tw) solid transparent; border-left:var(--tl) solid var(--ineq); }
+  .tri.up{ border-left:var(--tw) solid transparent; border-right:var(--tw) solid transparent; border-bottom:var(--tl) solid var(--ineq); }
+  .tri.down{ border-left:var(--tw) solid transparent; border-right:var(--tw) solid transparent; border-top:var(--tl) solid var(--ineq); }
 
   .pad{margin-top:12px;}
   .numbers{display:grid; gap:8px; margin-bottom:8px;}
@@ -544,12 +552,27 @@ function isGiven(cell){ return state.puzzle.givens[cell] !== 0; }
 function constraintMap(){
   const N = state.size;
   const m = {h:{}, v:{}};
+  // Triangle points toward the smaller cell (apex = smaller value).
   for(const k of state.puzzle.constraints){
     const r = (k.i1 / N)|0, c = k.i1 % N;
-    if(k.dir==='h') m.h[`${r}_${c}`] = k.less ? '<' : '>';
-    else            m.v[`${r}_${c}`] = k.less ? '∧' : '∨';
+    if(k.dir==='h') m.h[`${r}_${c}`] = k.less ? 'left' : 'right';
+    else            m.v[`${r}_${c}`] = k.less ? 'up' : 'down';
   }
   return m;
+}
+
+// Create an inequality gap cell holding an orange triangle (or empty).
+function ineqEl(dir, gc, gr){
+  const g = document.createElement('div');
+  g.className = 'ineq';
+  g.style.gridColumn = gc;
+  g.style.gridRow = gr;
+  if(dir){
+    const t = document.createElement('i');
+    t.className = 'tri ' + dir;
+    g.appendChild(t);
+  }
+  return g;
 }
 
 function buildBoard(){
@@ -588,21 +611,11 @@ function buildBoard(){
 
       // horizontal inequality (to the right)
       if(c+1<N){
-        const g = document.createElement('div');
-        g.className = 'ineq h';
-        g.style.gridColumn = (2*c+2);
-        g.style.gridRow = (2*r+1);
-        g.textContent = cm.h[`${r}_${c}`] || '';
-        boardEl.appendChild(g);
+        boardEl.appendChild(ineqEl(cm.h[`${r}_${c}`], 2*c+2, 2*r+1));
       }
       // vertical inequality (below)
       if(r+1<N){
-        const g = document.createElement('div');
-        g.className = 'ineq v';
-        g.style.gridColumn = (2*c+1);
-        g.style.gridRow = (2*r+2);
-        g.textContent = cm.v[`${r}_${c}`] || '';
-        boardEl.appendChild(g);
+        boardEl.appendChild(ineqEl(cm.v[`${r}_${c}`], 2*c+1, 2*r+2));
       }
     }
   }

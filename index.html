@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#0b1020" />
+<meta name="mobile-web-app-capable" content="yes" />
+<title>Daily Futoshiki</title>
+<style>
+  :root{
+    --bg:#0b1020;
+    --bg2:#121a31;
+    --panel:#182242;
+    --panel2:#1f2b52;
+    --line:#2c3a66;
+    --cell:#1c264a;
+    --cell-sel:#2d4a8a;
+    --cell-peer:#222e58;
+    --given:#0f1730;
+    --text:#eef2ff;
+    --muted:#9aa6c8;
+    --accent:#5b8cff;
+    --accent2:#7c5bff;
+    --good:#36d399;
+    --bad:#ff6b81;
+    --note:#9fb0dc;
+    --shadow:0 10px 30px rgba(0,0,0,.45);
+    --radius:16px;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#eef2fb; --bg2:#e6ecff; --panel:#ffffff; --panel2:#f1f4ff;
+      --line:#c7d0ea; --cell:#ffffff; --cell-sel:#cfe0ff; --cell-peer:#eef3ff;
+      --given:#eef1f9; --text:#16203a; --muted:#5a6a8c;
+      --accent:#3b6fff; --accent2:#7c5bff; --note:#5a6a8c;
+      --shadow:0 12px 30px rgba(40,60,120,.18);
+    }
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(1200px 800px at 50% -10%, var(--bg2), var(--bg));
+    color:var(--text);
+    min-height:100vh;
+    min-height:100dvh;
+    display:flex;
+    justify-content:center;
+    padding:env(safe-area-inset-top) 12px calc(env(safe-area-inset-bottom) + 12px);
+    -webkit-user-select:none; user-select:none;
+    touch-action:manipulation;
+  }
+  .app{width:100%; max-width:460px; margin:0 auto; padding-top:10px;}
+
+  header{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
+  .title{display:flex; flex-direction:column; line-height:1.05;}
+  .title h1{font-size:22px; margin:0; letter-spacing:.3px; font-weight:800;}
+  .title .date{font-size:12px; color:var(--muted); margin-top:2px;}
+  .streak{
+    display:flex; align-items:center; gap:6px; background:var(--panel);
+    border:1px solid var(--line); padding:8px 12px; border-radius:999px;
+    box-shadow:var(--shadow); font-weight:700; font-size:15px;
+  }
+  .streak small{color:var(--muted); font-weight:600; font-size:11px;}
+
+  .segmented{
+    display:flex; background:var(--panel); border:1px solid var(--line);
+    border-radius:12px; padding:4px; gap:4px; box-shadow:var(--shadow);
+  }
+  .segmented.full{flex:1;}
+  .seg-row{display:flex; gap:8px; margin-bottom:10px;}
+  .segmented button{
+    flex:1; border:0; background:transparent; color:var(--muted);
+    padding:8px 6px; border-radius:9px; font-size:13px; font-weight:700;
+    cursor:pointer; transition:.15s; white-space:nowrap;
+  }
+  .segmented button.active{background:linear-gradient(180deg,var(--accent),var(--accent2)); color:#fff; box-shadow:0 4px 12px rgba(91,140,255,.4);}
+
+  .status{
+    text-align:center; font-size:13px; color:var(--muted); min-height:20px;
+    margin:4px 0 8px; font-weight:600;
+  }
+  .status.win{color:var(--good); font-weight:800; font-size:15px;}
+
+  .board-wrap{display:flex; justify-content:center;}
+  .board{
+    display:grid; gap:0; background:transparent; touch-action:manipulation;
+    width:min(92vw, 440px);
+  }
+  .cell{
+    position:relative; background:var(--cell); border:1px solid var(--line);
+    border-radius:10px; display:flex; align-items:center; justify-content:center;
+    font-weight:700; cursor:pointer; aspect-ratio:1/1; overflow:hidden;
+    transition:background .12s, transform .05s;
+  }
+  .cell:active{transform:scale(.97);}
+  .cell.given{background:var(--given); color:var(--text);}
+  .cell.given .val{opacity:.95;}
+  .cell.user .val{color:var(--accent);}
+  .cell.selected{background:var(--cell-sel); box-shadow:inset 0 0 0 2px var(--accent);}
+  .cell.peer{background:var(--cell-peer);}
+  .cell.same{box-shadow:inset 0 0 0 2px var(--accent2);}
+  .cell.conflict .val{color:var(--bad)!important;}
+  .cell.hintflash{animation:flash .6s ease;}
+  @keyframes flash{0%{background:var(--good);}100%{}}
+  .cell .val{font-size:clamp(18px,6vw,30px); line-height:1;}
+  .cell .notes{
+    position:absolute; inset:6%; display:grid; gap:0;
+    color:var(--note); font-weight:600; pointer-events:none;
+  }
+  .cell .notes span{display:flex; align-items:center; justify-content:center; font-size:clamp(8px,2.6vw,12px); opacity:.85;}
+
+  .ineq{
+    display:flex; align-items:center; justify-content:center;
+    color:var(--accent); font-weight:800; pointer-events:none;
+    font-size:clamp(12px,4vw,20px);
+  }
+  .ineq.h{}
+  .ineq.v{}
+
+  .pad{margin-top:12px;}
+  .numbers{display:grid; gap:8px; margin-bottom:8px;}
+  .numbers button{
+    border:1px solid var(--line); background:var(--panel); color:var(--text);
+    font-size:22px; font-weight:800; padding:14px 0; border-radius:12px;
+    cursor:pointer; box-shadow:var(--shadow); transition:transform .05s;
+  }
+  .numbers button:active{transform:scale(.95);}
+  .numbers button .cnt{display:block; font-size:10px; color:var(--muted); font-weight:600; margin-top:2px;}
+  .numbers button.done{opacity:.4;}
+
+  .actions{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .actions button{
+    border:1px solid var(--line); background:var(--panel2); color:var(--text);
+    padding:11px 6px; border-radius:12px; font-size:12.5px; font-weight:700;
+    cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px;
+    transition:transform .05s;
+  }
+  .actions button:active{transform:scale(.96);}
+  .actions button .ico{font-size:17px;}
+  .actions button.on{background:linear-gradient(180deg,var(--accent),var(--accent2)); color:#fff; border-color:transparent;}
+
+  .footer{margin-top:14px; text-align:center; color:var(--muted); font-size:11px; line-height:1.5;}
+
+  .toast{
+    position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom) + 18px);
+    transform:translateX(-50%) translateY(20px); background:var(--panel);
+    border:1px solid var(--line); color:var(--text); padding:10px 16px;
+    border-radius:999px; box-shadow:var(--shadow); font-size:13px; font-weight:600;
+    opacity:0; pointer-events:none; transition:.25s; z-index:50; max-width:90vw; text-align:center;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  .confetti{position:fixed; inset:0; pointer-events:none; z-index:60; overflow:hidden;}
+  .confetti i{position:absolute; top:-12px; width:9px; height:14px; border-radius:2px; animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg); opacity:1;}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="title">
+      <h1>Futoshiki</h1>
+      <div class="date" id="dateLabel"></div>
+    </div>
+    <div class="streak" title="Daily streak">
+      🔥 <span id="streakNum">0</span>
+      <small id="bestNum"></small>
+    </div>
+  </header>
+
+  <div class="seg-row">
+    <div class="segmented full" id="sizeSeg">
+      <button data-size="4">4×4</button>
+      <button data-size="5">5×5</button>
+      <button data-size="6">6×6</button>
+    </div>
+  </div>
+  <div class="seg-row">
+    <div class="segmented full" id="diffSeg">
+      <button data-diff="easy">Easy</button>
+      <button data-diff="medium">Medium</button>
+      <button data-diff="hard">Hard</button>
+    </div>
+  </div>
+
+  <div class="status" id="status">&nbsp;</div>
+
+  <div class="board-wrap">
+    <div class="board" id="board"></div>
+  </div>
+
+  <div class="pad">
+    <div class="numbers" id="numbers"></div>
+    <div class="actions">
+      <button id="btnNotes"><span class="ico">✏️</span>Notes: Off</button>
+      <button id="btnErase"><span class="ico">⌫</span>Erase</button>
+      <button id="btnHint"><span class="ico">💡</span>Solve Cell</button>
+      <button id="btnAutoNotes"><span class="ico">🔢</span>Show Notes</button>
+      <button id="btnClearNotes"><span class="ico">🧹</span>Clear Notes</button>
+      <button id="btnReset"><span class="ico">↺</span>Reset</button>
+    </div>
+  </div>
+
+  <div class="footer">
+    A new puzzle every day. Tap a cell, then a number.<br/>
+    Fill each row & column 1–N with no repeats, obeying the &lt; &gt; signs.<br/>
+    Tip: add this page to your Home Screen for a full-screen app.
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Daily Futoshiki — self-contained, offline, mobile-first.
+   No dependencies. State persisted in localStorage.
+   ============================================================ */
+
+/* ---------- Seeded RNG (deterministic daily puzzles) ---------- */
+function xmur3(str){
+  let h = 1779033703 ^ str.length;
+  for(let i=0;i<str.length;i++){
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return function(){
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    h ^= h >>> 16;
+    return h >>> 0;
+  };
+}
+function mulberry32(a){
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function makeRng(seedStr){
+  const seed = xmur3(seedStr)();
+  return mulberry32(seed);
+}
+function shuffle(arr, rng){
+  for(let i=arr.length-1;i>0;i--){
+    const j = Math.floor(rng()*(i+1));
+    [arr[i],arr[j]] = [arr[j],arr[i]];
+  }
+  return arr;
+}
+
+/* ---------- Date helpers (local time) ---------- */
+function todayStr(){
+  const d = new Date();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+function dateAdd(str, delta){
+  const [y,m,d] = str.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  dt.setDate(dt.getDate()+delta);
+  const mm = String(dt.getMonth()+1).padStart(2,'0');
+  const dd = String(dt.getDate()).padStart(2,'0');
+  return `${dt.getFullYear()}-${mm}-${dd}`;
+}
+function prettyDate(str){
+  const [y,m,d] = str.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  return dt.toLocaleDateString(undefined, {weekday:'long', month:'long', day:'numeric'});
+}
+
+/* ============================================================
+   Puzzle generation
+   ============================================================ */
+
+// Build a random valid Latin square (each row/col has 1..N once).
+function randomLatin(N, rng){
+  const grid = Array.from({length:N}, ()=>new Array(N).fill(0));
+  function place(r){
+    if(r === N) return true;
+    const order = shuffle([...Array(N).keys()].map(x=>x+1), rng);
+    return fillRow(r, 0, order);
+  }
+  function fillRow(r, c, order){
+    if(c === N) return place(r+1);
+    const cand = shuffle(order.slice(), rng);
+    for(const v of cand){
+      let ok = true;
+      for(let cc=0; cc<c; cc++) if(grid[r][cc]===v){ ok=false; break; }
+      if(ok) for(let rr=0; rr<r; rr++) if(grid[rr][c]===v){ ok=false; break; }
+      if(ok){
+        grid[r][c] = v;
+        if(fillRow(r, c+1, order)) return true;
+        grid[r][c] = 0;
+      }
+    }
+    return false;
+  }
+  // Robust fallback: shift-based Latin square then shuffle rows/cols/symbols.
+  if(!place(0)){
+    for(let r=0;r<N;r++) for(let c=0;c<N;c++) grid[r][c] = ((r+c)%N)+1;
+  }
+  return grid;
+}
+
+// Solver that counts solutions up to `limit`. Returns number found.
+function countSolutions(N, givens, byCell, limit){
+  const arr = new Int8Array(N*N);
+  for(let i=0;i<N*N;i++) arr[i] = givens[i];
+  let found = 0;
+
+  function candidatesFor(cell){
+    const r = (cell / N) | 0, c = cell % N;
+    const res = [];
+    for(let v=1; v<=N; v++){
+      let ok = true;
+      // row/col uniqueness
+      for(let k=0;k<N;k++){
+        if(arr[r*N+k]===v){ ok=false; break; }
+        if(arr[k*N+c]===v){ ok=false; break; }
+      }
+      if(!ok) continue;
+      // inequalities with assigned neighbours
+      const nb = byCell[cell];
+      for(let t=0;t<nb.length;t++){
+        const o = arr[nb[t].other];
+        if(o!==0){
+          if(nb[t].less ? !(v < o) : !(v > o)){ ok=false; break; }
+        }
+      }
+      if(ok) res.push(v);
+    }
+    return res;
+  }
+
+  function solve(){
+    // pick unassigned cell with fewest candidates (MRV)
+    let best = -1, bestCands = null;
+    for(let i=0;i<N*N;i++){
+      if(arr[i]===0){
+        const cands = candidatesFor(i);
+        if(cands.length === 0) return;        // dead end
+        if(bestCands === null || cands.length < bestCands.length){
+          best = i; bestCands = cands;
+          if(cands.length === 1) break;
+        }
+      }
+    }
+    if(best === -1){ found++; return; }       // complete
+    for(const v of bestCands){
+      arr[best] = v;
+      solve();
+      arr[best] = 0;
+      if(found >= limit) return;
+    }
+  }
+  solve();
+  return found;
+}
+
+const DIFF = {
+  easy:   { ineqProb:0.55, removalFrac:0.45 },
+  medium: { ineqProb:0.42, removalFrac:0.70 },
+  hard:   { ineqProb:0.30, removalFrac:1.00 },
+};
+
+// Generate a daily puzzle for (date,size,difficulty). Deterministic.
+function generatePuzzle(dateS, N, diff){
+  const rng = makeRng(`futoshiki|${dateS}|${N}|${diff}`);
+  const cfg = DIFF[diff];
+  const sol = randomLatin(N, rng);
+  const solFlat = new Int8Array(N*N);
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++) solFlat[r*N+c] = sol[r][c];
+
+  // Inequality constraints between adjacent cells.
+  // Each: {i1,i2, less} where less => value[i1] < value[i2].
+  const constraints = [];
+  const edges = [];
+  for(let r=0;r<N;r++){
+    for(let c=0;c<N;c++){
+      if(c+1<N) edges.push([r*N+c, r*N+c+1, 'h']);
+      if(r+1<N) edges.push([r*N+c, (r+1)*N+c, 'v']);
+    }
+  }
+  shuffle(edges, rng);
+  for(const [a,b,dir] of edges){
+    if(rng() < cfg.ineqProb){
+      constraints.push({i1:a, i2:b, dir, less: solFlat[a] < solFlat[b]});
+    }
+  }
+  // Guarantee a minimum number of constraints so puzzles aren't bare.
+  let idx = 0;
+  const minC = Math.max(N, Math.floor(edges.length * 0.18));
+  while(constraints.length < minC && idx < edges.length){
+    const [a,b,dir] = edges[idx++];
+    if(!constraints.some(k=>k.i1===a && k.i2===b)){
+      constraints.push({i1:a, i2:b, dir, less: solFlat[a] < solFlat[b]});
+    }
+  }
+
+  const byCell = Array.from({length:N*N}, ()=>[]);
+  for(const k of constraints){
+    byCell[k.i1].push({other:k.i2, less: k.less});
+    byCell[k.i2].push({other:k.i1, less: !k.less});
+  }
+
+  // Start with all givens, then greedily remove while solution stays unique.
+  const givens = new Int8Array(solFlat);
+  const cellOrder = shuffle([...Array(N*N).keys()], rng);
+  const maxRemove = Math.floor(N*N * cfg.removalFrac);
+  let removed = 0;
+  for(const cell of cellOrder){
+    if(removed >= maxRemove) break;
+    const keep = givens[cell];
+    givens[cell] = 0;
+    if(countSolutions(N, givens, byCell, 2) === 1){
+      removed++;
+    } else {
+      givens[cell] = keep;  // restore — removal broke uniqueness
+    }
+  }
+
+  return {
+    N, diff, date:dateS,
+    givens: Array.from(givens),
+    solution: Array.from(solFlat),
+    constraints,
+  };
+}
+
+/* ============================================================
+   Game state + persistence
+   ============================================================ */
+const LS = {
+  stats:'futoshiki_stats_v1',
+  pref:'futoshiki_pref_v1',
+  prog:(d,N,diff)=>`futoshiki_prog_${d}_${N}_${diff}`,
+};
+function loadJSON(key, def){
+  try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; }
+  catch(e){ return def; }
+}
+function saveJSON(key, val){
+  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+}
+
+let state = {
+  puzzle:null,
+  values:null,   // user-entered values (0 = empty), includes givens
+  notes:null,    // array of Sets per cell
+  selected:-1,
+  notesMode:false,
+  size:5,
+  diff:'medium',
+  date:todayStr(),
+  solved:false,
+};
+
+/* ---------- DOM refs ---------- */
+const boardEl = document.getElementById('board');
+const numbersEl = document.getElementById('numbers');
+const statusEl = document.getElementById('status');
+const streakNumEl = document.getElementById('streakNum');
+const bestNumEl = document.getElementById('bestNum');
+const dateLabel = document.getElementById('dateLabel');
+const toastEl = document.getElementById('toast');
+
+/* ---------- Toast ---------- */
+let toastTimer = null;
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>toastEl.classList.remove('show'), 1800);
+}
+
+/* ---------- Streak ---------- */
+function getStats(){ return loadJSON(LS.stats, {streak:0, best:0, last:null}); }
+function renderStreak(){
+  const s = getStats();
+  const t = todayStr();
+  const alive = (s.last === t) || (s.last === dateAdd(t,-1));
+  streakNumEl.textContent = alive ? s.streak : 0;
+  bestNumEl.textContent = s.best ? `best ${s.best}` : '';
+}
+function markCompletedToday(){
+  const s = getStats();
+  const t = todayStr();
+  if(s.last === t) return;                 // already counted today
+  if(s.last === dateAdd(t,-1)) s.streak += 1;
+  else s.streak = 1;
+  s.last = t;
+  s.best = Math.max(s.best||0, s.streak);
+  saveJSON(LS.stats, s);
+  renderStreak();
+}
+
+/* ---------- Progress persistence ---------- */
+function saveProgress(){
+  const p = state.puzzle;
+  if(!p) return;
+  saveJSON(LS.prog(state.date, state.size, state.diff), {
+    values: Array.from(state.values),
+    notes: state.notes.map(s=>Array.from(s)),
+    solved: state.solved,
+  });
+}
+function loadProgress(){
+  return loadJSON(LS.prog(state.date, state.size, state.diff), null);
+}
+
+/* ============================================================
+   Build / render
+   ============================================================ */
+function newGame(){
+  state.date = todayStr();
+  state.puzzle = generatePuzzle(state.date, state.size, state.diff);
+  const N = state.size;
+  const saved = loadProgress();
+  if(saved && saved.values && saved.values.length === N*N){
+    state.values = Int8Array.from(saved.values);
+    state.notes = saved.notes.map(a=>new Set(a));
+    state.solved = !!saved.solved;
+  } else {
+    state.values = Int8Array.from(state.puzzle.givens);
+    state.notes = Array.from({length:N*N}, ()=>new Set());
+    state.solved = false;
+  }
+  state.selected = -1;
+  buildBoard();
+  buildNumbers();
+  render();
+}
+
+function isGiven(cell){ return state.puzzle.givens[cell] !== 0; }
+
+function constraintMap(){
+  const N = state.size;
+  const m = {h:{}, v:{}};
+  for(const k of state.puzzle.constraints){
+    const r = (k.i1 / N)|0, c = k.i1 % N;
+    if(k.dir==='h') m.h[`${r}_${c}`] = k.less ? '<' : '>';
+    else            m.v[`${r}_${c}`] = k.less ? '∧' : '∨';
+  }
+  return m;
+}
+
+function buildBoard(){
+  const N = state.size;
+  boardEl.innerHTML = '';
+  // Track layout: cells on even tracks, inequality gaps on odd tracks.
+  const tracks = [];
+  for(let i=0;i<2*N-1;i++) tracks.push(i%2===0 ? 'minmax(0,1fr)' : '0.42fr');
+  boardEl.style.gridTemplateColumns = tracks.join(' ');
+  boardEl.style.gridTemplateRows = tracks.join(' ');
+  boardEl.style.gap = (N>=6 ? '3px' : '4px');
+
+  const cm = constraintMap();
+
+  for(let r=0;r<N;r++){
+    for(let c=0;c<N;c++){
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.style.gridColumn = (2*c+1);
+      cell.style.gridRow = (2*r+1);
+      cell.dataset.cell = r*N+c;
+      const val = document.createElement('div');
+      val.className = 'val';
+      const notes = document.createElement('div');
+      notes.className = 'notes';
+      notes.style.gridTemplateColumns = `repeat(${N<=4?2:3},1fr)`;
+      for(let v=1;v<=N;v++){
+        const sp = document.createElement('span');
+        sp.dataset.n = v;
+        notes.appendChild(sp);
+      }
+      cell.appendChild(notes);
+      cell.appendChild(val);
+      cell.addEventListener('click', ()=>selectCell(r*N+c));
+      boardEl.appendChild(cell);
+
+      // horizontal inequality (to the right)
+      if(c+1<N){
+        const g = document.createElement('div');
+        g.className = 'ineq h';
+        g.style.gridColumn = (2*c+2);
+        g.style.gridRow = (2*r+1);
+        g.textContent = cm.h[`${r}_${c}`] || '';
+        boardEl.appendChild(g);
+      }
+      // vertical inequality (below)
+      if(r+1<N){
+        const g = document.createElement('div');
+        g.className = 'ineq v';
+        g.style.gridColumn = (2*c+1);
+        g.style.gridRow = (2*r+2);
+        g.textContent = cm.v[`${r}_${c}`] || '';
+        boardEl.appendChild(g);
+      }
+    }
+  }
+}
+
+function buildNumbers(){
+  const N = state.size;
+  numbersEl.innerHTML = '';
+  numbersEl.style.gridTemplateColumns = `repeat(${N},1fr)`;
+  for(let v=1;v<=N;v++){
+    const b = document.createElement('button');
+    b.dataset.n = v;
+    b.innerHTML = `${v}<span class="cnt"></span>`;
+    b.addEventListener('click', ()=>inputNumber(v));
+    numbersEl.appendChild(b);
+  }
+}
+
+/* ---------- Conflict detection ---------- */
+function findConflicts(){
+  const N = state.size, v = state.values;
+  const bad = new Set();
+  // row/col duplicates
+  for(let r=0;r<N;r++){
+    for(let c=0;c<N;c++){
+      const val = v[r*N+c];
+      if(!val) continue;
+      for(let k=0;k<N;k++){
+        if(k!==c && v[r*N+k]===val){ bad.add(r*N+c); bad.add(r*N+k); }
+        if(k!==r && v[k*N+c]===val){ bad.add(r*N+c); bad.add(k*N+c); }
+      }
+    }
+  }
+  // inequalities
+  for(const k of state.puzzle.constraints){
+    const a = v[k.i1], b = v[k.i2];
+    if(a && b){
+      const ok = k.less ? a<b : a>b;
+      if(!ok){ bad.add(k.i1); bad.add(k.i2); }
+    }
+  }
+  return bad;
+}
+
+/* ---------- Render ---------- */
+function render(){
+  const N = state.size;
+  const bad = findConflicts();
+  const sel = state.selected;
+  const selVal = sel>=0 ? state.values[sel] : 0;
+  const selR = sel>=0 ? (sel/N|0) : -1;
+  const selC = sel>=0 ? (sel%N) : -1;
+
+  const cells = boardEl.querySelectorAll('.cell');
+  cells.forEach(el=>{
+    const i = +el.dataset.cell;
+    const r = i/N|0, c = i%N;
+    const val = state.values[i];
+    el.classList.toggle('given', isGiven(i));
+    el.classList.toggle('user', !isGiven(i) && val!==0);
+    el.classList.toggle('selected', i===sel);
+    el.classList.toggle('peer', sel>=0 && i!==sel && (r===selR || c===selC));
+    el.classList.toggle('same', sel>=0 && i!==sel && val!==0 && val===selVal);
+    el.classList.toggle('conflict', bad.has(i));
+
+    const valEl = el.querySelector('.val');
+    const notesEl = el.querySelector('.notes');
+    if(val){
+      valEl.textContent = val;
+      valEl.style.display = '';
+      notesEl.style.display = 'none';
+    } else {
+      valEl.textContent = '';
+      const ns = state.notes[i];
+      notesEl.style.display = ns.size ? 'grid' : 'none';
+      notesEl.querySelectorAll('span').forEach(sp=>{
+        sp.textContent = ns.has(+sp.dataset.n) ? sp.dataset.n : '';
+      });
+    }
+  });
+
+  // number pad counts (how many of each placed) + done state
+  const counts = new Array(N+1).fill(0);
+  for(let i=0;i<N*N;i++) if(state.values[i]) counts[state.values[i]]++;
+  numbersEl.querySelectorAll('button').forEach(b=>{
+    const n = +b.dataset.n;
+    b.querySelector('.cnt').textContent = `${counts[n]}/${N}`;
+    b.classList.toggle('done', counts[n]===N);
+  });
+
+  // status
+  const filled = state.values.filter(x=>x!==0).length;
+  if(state.solved){
+    statusEl.textContent = '🎉 Solved! See you tomorrow.';
+    statusEl.classList.add('win');
+  } else {
+    statusEl.classList.remove('win');
+    const left = N*N - filled;
+    statusEl.textContent = bad.size
+      ? `${bad.size} cell${bad.size>1?'s':''} conflict`
+      : (left===0 ? 'Checking…' : `${left} cell${left>1?'s':''} left`);
+  }
+
+  document.getElementById('btnNotes').classList.toggle('on', state.notesMode);
+  document.getElementById('btnNotes').innerHTML =
+    `<span class="ico">✏️</span>Notes: ${state.notesMode?'On':'Off'}`;
+}
+
+/* ---------- Interaction ---------- */
+function selectCell(i){
+  state.selected = (state.selected===i) ? -1 : i;
+  render();
+}
+function inputNumber(v){
+  const i = state.selected;
+  if(i<0){ toast('Select a cell first'); return; }
+  if(isGiven(i)){ toast('That cell is fixed'); return; }
+  if(state.solved) return;
+
+  if(state.notesMode){
+    if(state.values[i]) return; // can't note a filled cell
+    const ns = state.notes[i];
+    if(ns.has(v)) ns.delete(v); else ns.add(v);
+  } else {
+    if(state.values[i]===v){ state.values[i]=0; }
+    else {
+      state.values[i] = v;
+      state.notes[i].clear();
+      // tidy: remove this value from notes of peers
+      const N = state.size, r=i/N|0, c=i%N;
+      for(let k=0;k<N;k++){ state.notes[r*N+k].delete(v); state.notes[k*N+c].delete(v); }
+    }
+  }
+  afterChange();
+}
+function eraseCell(){
+  const i = state.selected;
+  if(i<0){ toast('Select a cell first'); return; }
+  if(isGiven(i)){ toast('That cell is fixed'); return; }
+  if(state.solved) return;
+  state.values[i]=0;
+  state.notes[i].clear();
+  afterChange();
+}
+function solveCell(){
+  const i = state.selected;
+  if(i<0){ toast('Select a cell first'); return; }
+  if(state.solved) return;
+  if(isGiven(i) || state.values[i]===state.puzzle.solution[i]){
+    toast('Already correct'); return;
+  }
+  state.values[i] = state.puzzle.solution[i];
+  state.notes[i].clear();
+  const el = boardEl.querySelector(`.cell[data-cell="${i}"]`);
+  if(el){ el.classList.remove('hintflash'); void el.offsetWidth; el.classList.add('hintflash'); }
+  afterChange();
+}
+function autoNotes(){
+  if(state.solved) return;
+  const N = state.size;
+  for(let i=0;i<N*N;i++){
+    if(state.values[i]) continue;
+    const r=i/N|0, c=i%N;
+    const used = new Set();
+    for(let k=0;k<N;k++){ if(state.values[r*N+k]) used.add(state.values[r*N+k]); if(state.values[k*N+c]) used.add(state.values[k*N+c]); }
+    const ns = state.notes[i];
+    for(let vv=1; vv<=N; vv++) if(!used.has(vv)) ns.add(vv);
+  }
+  afterChange();
+  toast('Filled in all candidate notes');
+}
+function clearNotes(){
+  for(const s of state.notes) s.clear();
+  afterChange();
+  toast('Cleared all notes');
+}
+function resetPuzzle(){
+  const N = state.size;
+  state.values = Int8Array.from(state.puzzle.givens);
+  state.notes = Array.from({length:N*N}, ()=>new Set());
+  state.solved = false;
+  state.selected = -1;
+  afterChange();
+  toast('Puzzle reset');
+}
+
+function checkWin(){
+  if(state.solved) return;
+  const N = state.size;
+  for(let i=0;i<N*N;i++) if(state.values[i] !== state.puzzle.solution[i]) return;
+  state.solved = true;
+  state.selected = -1;
+  markCompletedToday();
+  celebrate();
+  setTimeout(()=>toast('Daily puzzle complete! 🔥 Streak updated'), 200);
+}
+
+function afterChange(){
+  checkWin();
+  render();
+  saveProgress();
+}
+
+/* ---------- Confetti ---------- */
+function celebrate(){
+  const wrap = document.createElement('div');
+  wrap.className = 'confetti';
+  const colors = ['#5b8cff','#7c5bff','#36d399','#ffd166','#ff6b81','#4cc9f0'];
+  for(let i=0;i<90;i++){
+    const p = document.createElement('i');
+    p.style.left = Math.random()*100+'vw';
+    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    p.style.animationDuration = (1.6+Math.random()*1.6)+'s';
+    p.style.animationDelay = (Math.random()*0.4)+'s';
+    p.style.transform = `translateY(0) rotate(${Math.random()*360}deg)`;
+    wrap.appendChild(p);
+  }
+  document.body.appendChild(wrap);
+  setTimeout(()=>wrap.remove(), 3600);
+}
+
+/* ============================================================
+   Controls wiring
+   ============================================================ */
+function setActiveSeg(container, attr, value){
+  container.querySelectorAll('button').forEach(b=>{
+    b.classList.toggle('active', b.dataset[attr] === String(value));
+  });
+}
+function savePref(){ saveJSON(LS.pref, {size:state.size, diff:state.diff}); }
+
+document.getElementById('sizeSeg').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  state.size = +b.dataset.size;
+  setActiveSeg(document.getElementById('sizeSeg'),'size',state.size);
+  savePref();
+  statusEl.textContent = 'Generating…';
+  setTimeout(newGame, 20);
+});
+document.getElementById('diffSeg').addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  state.diff = b.dataset.diff;
+  setActiveSeg(document.getElementById('diffSeg'),'diff',state.diff);
+  savePref();
+  statusEl.textContent = 'Generating…';
+  setTimeout(newGame, 20);
+});
+
+document.getElementById('btnNotes').addEventListener('click', ()=>{ state.notesMode=!state.notesMode; render(); });
+document.getElementById('btnErase').addEventListener('click', eraseCell);
+document.getElementById('btnHint').addEventListener('click', solveCell);
+document.getElementById('btnAutoNotes').addEventListener('click', autoNotes);
+document.getElementById('btnClearNotes').addEventListener('click', clearNotes);
+document.getElementById('btnReset').addEventListener('click', resetPuzzle);
+
+// Keyboard support (desktop / external keyboards)
+document.addEventListener('keydown', e=>{
+  const N = state.size;
+  if(e.key>='1' && e.key<=String(N)){ inputNumber(+e.key); e.preventDefault(); return; }
+  if(e.key==='Backspace' || e.key==='Delete' || e.key==='0'){ eraseCell(); e.preventDefault(); return; }
+  if(e.key==='n' || e.key==='N'){ state.notesMode=!state.notesMode; render(); return; }
+  if(e.key==='h' || e.key==='H'){ solveCell(); return; }
+  if(state.selected>=0 && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){
+    let r = state.selected/N|0, c = state.selected%N;
+    if(e.key==='ArrowUp') r=(r+N-1)%N;
+    if(e.key==='ArrowDown') r=(r+1)%N;
+    if(e.key==='ArrowLeft') c=(c+N-1)%N;
+    if(e.key==='ArrowRight') c=(c+1)%N;
+    state.selected = r*N+c; render(); e.preventDefault();
+  }
+});
+
+/* ---------- Boot ---------- */
+function boot(){
+  const pref = loadJSON(LS.pref, {size:5, diff:'medium'});
+  state.size = pref.size || 5;
+  state.diff = pref.diff || 'medium';
+  state.date = todayStr();
+  dateLabel.textContent = prettyDate(state.date);
+  setActiveSeg(document.getElementById('sizeSeg'),'size',state.size);
+  setActiveSeg(document.getElementById('diffSeg'),'diff',state.diff);
+  renderStreak();
+  newGame();
+
+  // Refresh to the new day's puzzle if the app stays open past midnight.
+  setInterval(()=>{
+    if(todayStr() !== state.date){
+      dateLabel.textContent = prettyDate(todayStr());
+      renderStreak();
+      newGame();
+    }
+  }, 60*1000);
+}
+boot();
+</script>
+</body>
+</html>

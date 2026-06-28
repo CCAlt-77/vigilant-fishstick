@@ -59,7 +59,21 @@
 
   // ---- Game state ------------------------------------------------------
 
-  const today = new Date();
+  // The day to play. Normally "now"; a ?date=YYYY-MM-DD query lets you
+  // preview/replay any specific day.
+  function resolveToday() {
+    try {
+      const q = new URLSearchParams(location.search).get('date');
+      if (q && /^\d{4}-\d{2}-\d{2}$/.test(q)) {
+        const [y, m, d] = q.split('-').map(Number);
+        const dt = new Date(y, m - 1, d);
+        if (!isNaN(dt)) return dt;
+      }
+    } catch (e) { /* ignore */ }
+    return new Date();
+  }
+
+  const today = resolveToday();
   const puzzle = pickDailyPuzzle(today);
   const solution = Puzzles.toGrid(puzzle.grid); // 0/1
   const N = puzzle.size;
@@ -105,6 +119,7 @@
   const cellEls = []; // cellEls[r][c]
   const colClueEls = [];
   const rowClueEls = [];
+  let rowCluesContainer = null;
 
   function buildBoard() {
     boardEl.innerHTML = '';
@@ -156,8 +171,22 @@
     boardEl.appendChild(colCluesEl);
     boardEl.appendChild(rowCluesEl);
     boardEl.appendChild(gridEl);
+    rowCluesContainer = rowCluesEl;
 
     attachPointerHandlers(gridEl);
+  }
+
+  // Size cells so the whole board fits the screen width without needing a
+  // horizontal scroll — important on phones, and adapts to rotation.
+  function fitBoard() {
+    const wrap = document.querySelector('.board-wrap');
+    if (!wrap || !rowCluesContainer) return;
+    const avail = wrap.clientWidth;
+    const gutter = rowCluesContainer.getBoundingClientRect().width || 40;
+    const chrome = 22; // board padding + borders + a little breathing room
+    let cell = Math.floor((avail - gutter - chrome) / N);
+    cell = Math.max(15, Math.min(34, cell));
+    document.documentElement.style.setProperty('--cell', cell + 'px');
   }
 
   function el(tag, cls) { const e = document.createElement(tag); if (cls) e.className = cls; return e; }
@@ -434,9 +463,18 @@
     sizeLine.textContent = `Grid: ${N}×${N}`;
     buildBoard();
     renderAll();
+    fitBoard();
     setupControls();
     updateStreakLine();
     if (solved) showWin();
+
+    let resizeTimer = null;
+    const onResize = () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(fitBoard, 120);
+    };
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
   }
 
   init();

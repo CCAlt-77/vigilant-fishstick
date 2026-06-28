@@ -8,6 +8,10 @@ each day, and your progress is saved in the browser.
 Fill the cells using the number clues beside each row and above each column to
 uncover the picture.
 
+Works great in a mobile browser (e.g. Safari on iPhone): tap to fill, tap the
+**Mark** button to flag empty cells, and drag to paint a run. The grid auto-sizes
+to fit your screen and re-fits when you rotate the phone.
+
 ## Play it
 
 It's a static site — no build step, no dependencies.
@@ -44,6 +48,9 @@ reached by pure logic — you never have to guess.
   for everyone — and cycles through the whole library before any picture
   repeats. Consecutive days are always different pictures.
 
+Append `?date=YYYY-MM-DD` to the URL to preview or replay the puzzle for any
+specific day (handy for testing).
+
 To add your own picture, append an entry to `js/puzzles.js` (a list of
 `'#'`/`'.'` rows, 12×12 or 15×15) and re-run the validator below.
 
@@ -58,12 +65,14 @@ To add your own picture, append an entry to `js/puzzles.js` (a list of
 | `js/app.js` | Game engine, rendering, daily pick, save/streak |
 | `tools/validate.js` | Checks every picture is uniquely solvable |
 | `tools/smoke.js` | Headless browser test that solves the day's puzzle |
+| `tools/mobile.js` | Emulates iPhones to confirm a 15×15 fits and is tappable |
 
 ## Tests
 
 ```bash
-npm run validate     # verify all pictures are uniquely (logic-)solvable
+npm run validate     # verify all 40 pictures are uniquely (logic-)solvable
 node tools/smoke.js  # end-to-end browser test (requires Playwright + Chromium)
+node tools/mobile.js # iPhone-emulation layout/touch test
 ```
 
 `validate.js` confirms each picture is the right size, is rectangular, and

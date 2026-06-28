@@ -1,0 +1,11 @@
+{
+  "name": "daily-nonogram",
+  "version": "1.0.0",
+  "description": "A daily Nonogram (picture-logic) puzzle web app — a new solvable picture every day.",
+  "private": true,
+  "scripts": {
+    "start": "node -e \"require('http').createServer((rq,rs)=>{const f=require('fs'),p=require('path');let u=rq.url.split('?')[0];if(u==='/')u='/index.html';const fp=p.join(process.cwd(),decodeURIComponent(u));f.readFile(fp,(e,d)=>{if(e){rs.statusCode=404;return rs.end('not found')}const t={'.html':'text/html','.css':'text/css','.js':'text/javascript'}[p.extname(fp)]||'application/octet-stream';rs.setHeader('content-type',t);rs.end(d)})}).listen(8080,()=>console.log('Daily Nonogram → http://localhost:8080'))\"",
+    "validate": "node tools/validate.js",
+    "test": "node tools/validate.js"
+  }
+}

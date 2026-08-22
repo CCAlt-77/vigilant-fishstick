@@ -50,8 +50,10 @@ the ball while balanced gives a clean, accurate shot, and hitting it at full str
 on the run scatters it. Swiping early is fine — the swipe is buffered until the ball is
 in range.
 
-Serving is the same swipe: length sets the pace, sideways lean places it wide or down
-the T. Two serves, as usual, and the second is automatically safer.
+Serving is the same swipe. The box you have to hit is marked on the far court and swaps
+side every point, so the aim marker only moves within it. Swipe length sets the pace and
+how deep it lands; sideways lean moves it between the centre line and out wide. Two
+serves, as usual, and the second is automatically safer.
 
 ## Modes
 
@@ -93,11 +95,13 @@ tools/                build, icon generation and the test harnesses
 
 ```sh
 node tools/test-scoring.mjs    # scoring rules: deuce, tiebreaks, set and match logic
+node tools/test-serve.mjs      # serve legality, court alternation, steady aim preview
 node tools/sim.mjs             # headless balance run: rally lengths and win rates per difficulty
 npx http-server -p 8145 -s . & # the browser tests need the site served
 node tools/test-ui.mjs         # menus, tournament flow, pause, saved progress
 node tools/test-dist.mjs       # the bundled builds boot and play like the modular site
 node tools/smoke.mjs           # plays a match in headless Safari-sized Chromium, screenshots
+node tools/test-perf.mjs URL 2 # frame times under CPU throttling
 ```
 
 `tools/sim.mjs` stubs the DOM and runs the real game modules, so a few hundred points

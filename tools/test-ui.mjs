@@ -78,6 +78,29 @@ const practice = await page.evaluate(() => window.__game.running && window.__gam
 step.push(`${practice ? 'ok  ' : 'FAIL'} practice mode starts`);
 await page.screenshot({ path: 'shots/ui-practice.png' });
 
+// The ball must actually be on screen in the server's hand, and stay put while
+// the serve is being aimed.
+await page.evaluate(() => { window.__ui.stack = []; window.__ui.show('s-mode', false); });
+await page.click('[data-mode="match"]');
+await page.click('#btn-start');
+await page.waitForTimeout(900);
+const serveCheck = await page.evaluate(() => {
+  const g = window.__game;
+  const b = g.ball;
+  const p = g.cam.project(b.x, b.y, b.z);
+  const c = document.getElementById('court');
+  const dpr = c.width / c.clientWidth;
+  const px = c.getContext('2d').getImageData(Math.round(p.x * dpr), Math.round(p.y * dpr), 1, 1).data;
+  const inHand = Math.abs(b.x - g.players[0].x) < 0.8 && Math.abs(b.y - g.players[0].y) < 0.8 && b.z > 0.8;
+  // The ball is the only strongly yellow-green thing on the court.
+  const yellow = px[0] > 150 && px[1] > 190 && px[2] < 160;
+  return { state: g.state, inHand, yellow, rgb: [px[0], px[1], px[2]], box: !!g.showServeBox };
+});
+step.push(`${serveCheck.state === 'serve-ready' ? 'ok  ' : 'FAIL'} waiting on the player's serve`);
+step.push(`${serveCheck.inHand ? 'ok  ' : 'FAIL'} ball positioned in the server's hand`);
+step.push(`${serveCheck.yellow ? 'ok  ' : 'FAIL'} ball is drawn there (pixel rgb ${serveCheck.rgb.join(',')})`);
+step.push(`${serveCheck.box ? 'ok  ' : 'FAIL'} target service box is highlighted`);
+
 console.log(step.join('\n'));
 if (errors.length) console.log('ERRORS:\n' + errors.join('\n'));
 await browser.close();

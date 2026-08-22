@@ -51,7 +51,10 @@ export class Game {
     this._loop = this._loop.bind(this);
   }
 
-  resize() { this.renderer.resize(); }
+  resize() {
+    this.renderer.resize();
+    this.input.invalidateRect();
+  }
 
   // ---------------------------------------------------------------- lifecycle
 
@@ -70,6 +73,7 @@ export class Game {
     this.decided = null;
     this.pendingSwipe = null;
     this.practiceScore = { rally: 0, best: this.practiceScore.best };
+    this.practicePoints = 0;
     this.serveNumber = 1;
 
     if (config.mode === 'practice') {
@@ -126,13 +130,37 @@ export class Game {
   }
 
   serverIdx() { return this.match ? this.match.server : 0; }
-  serveCourt() { return this.match ? this.match.serveCourt : (this.rallyShots % 2 === 0 ? 'deuce' : 'ad'); }
+
+  // The court in play for the current point. Fixed when the point begins: a
+  // second serve is delivered from the same court as the first.
+  serveCourt() { return this.pointCourt; }
+
+  nextServeCourt() {
+    if (this.match) return this.match.serveCourt;
+    return this.practicePoints % 2 === 0 ? 'deuce' : 'ad';
+  }
+
+  // The half of the court a serve from this side has to land in.
+  serviceBox(server = this.serverIdx(), court = this.pointCourt) {
+    const side = -this.players[server].side;
+    const wantPositiveX = side < 0 ? court === 'deuce' : court !== 'deuce';
+    return {
+      side,
+      court,
+      x0: 0,
+      x1: wantPositiveX ? COURT.halfSingles : -COURT.halfSingles,
+      y0: 0,
+      y1: side * COURT.serviceLine,
+      wantPositiveX,
+    };
+  }
 
   // ------------------------------------------------------------------- points
 
   beginPoint(firstOfMatch = false) {
     const server = this.serverIdx();
-    const court = this.serveCourt();
+    this.pointCourt = this.nextServeCourt();
+    const court = this.pointCourt;
     const b = this.ball;
     b.reset();
     b.held = true;
@@ -164,9 +192,13 @@ export class Game {
     this.emitScore();
 
     if (this.config.mode === 'practice') {
-      this.prompt('Swipe to serve  ·  tap for a standard drive');
+      const where = court === 'deuce' ? 'Deuce court' : 'Ad court';
+      this.prompt(`${where} — swipe up to serve into the marked box`);
     } else if (server === 0) {
-      this.prompt(this.serveNumber === 2 ? 'Second serve — swipe up to serve' : 'Swipe up to serve');
+      const where = court === 'deuce' ? 'Deuce court' : 'Ad court';
+      this.prompt(this.serveNumber === 2
+        ? `Second serve · ${where} — swipe up into the marked box`
+        : `${where} — swipe up to serve into the marked box`);
     } else {
       this.prompt('');
     }
@@ -217,14 +249,17 @@ export class Game {
     const wantPos = court !== 'deuce';   // near player's deuce serve lands at x < 0
     const second = this.serveNumber === 2;
     const power = clamp(g.power, 0.5, 1.25);
-    const T = second ? lerp(1.00, 0.90, clamp(power - 0.5, 0, 0.75) / 0.75)
-      : lerp(0.88, 0.74, clamp(power - 0.5, 0, 0.75) / 0.75);
+    const power2 = clamp(power - 0.5, 0, 0.75) / 0.75;
+    const T = second ? lerp(1.00, 0.90, power2) : lerp(0.88, 0.74, power2);
     const lateral = clamp(g.aim, -1, 1);
     const inner = second ? 0.9 : 0.5;
-    const outer = second ? 3.0 : 3.8;
+    const outer = second ? 3.2 : 3.8;
     const mag = lerp(inner, outer, (lateral * (wantPos ? 1 : -1) + 1) / 2);
-    const tx = (wantPos ? 1 : -1) * clamp(mag, 0.3, 3.9);
-    const ty = (this.players[0].side < 0 ? 1 : -1) * rand(second ? 3.6 : 4.4, second ? 5.6 : 6.05);
+    const tx = (wantPos ? 1 : -1) * clamp(mag, 0.3, 3.85);
+    // A harder serve lands deeper in the box. No randomness: what the marker
+    // shows while your thumb is down is exactly where the serve is aimed.
+    const depth = second ? lerp(3.9, 5.4, power2) : lerp(4.5, 6.0, power2);
+    const ty = (this.players[0].side < 0 ? 1 : -1) * depth;
     return { target: { x: tx, y: ty }, T };
   }
 
@@ -412,6 +447,9 @@ export class Game {
     this.players[0].update(dt);
     this.players[1].update(dt);
     this.showReach = this.state === 'rally' && this.ball.lastHitBy === 1 && !this.decided;
+    this.showServeBox = (this.state === 'serve-ready' || this.state === 'serve-toss')
+      ? this.serviceBox()
+      : null;
     this.strikeReady = this.canStrike(0);
   }
 
@@ -622,6 +660,7 @@ export class Game {
     }
 
     if (this.config.mode === 'practice') {
+      this.practicePoints++;
       this.beginPoint();
       return;
     }

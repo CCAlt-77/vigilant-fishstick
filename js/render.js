@@ -2,6 +2,8 @@ import { COURT, PALETTE, netHeightAt } from './config.js';
 import { clamp, lerp, easeOut, mulberry32 } from './util.js';
 
 const LINE = 0.05;
+// How far the camera may pan up, as a fraction of canvas height.
+const FOLLOW_MAX = 0.085;
 const BASELINE_W = 0.10;
 
 export class Renderer {
@@ -9,7 +11,12 @@ export class Renderer {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.cam = camera;
-    this.backdrop = document.createElement('canvas');
+    // Static scenery, pre-rendered once per resize. The camera only ever
+    // translates vertically, so these are blitted at an offset rather than
+    // re-drawn: it is the difference between ~150 path operations a frame and two.
+    this.sceneLayer = document.createElement('canvas');
+    this.netLayer = document.createElement('canvas');
+    this.layerExtra = 0;
     this.dpr = 1;
     this.w = 0;
     this.h = 0;
@@ -20,7 +27,7 @@ export class Renderer {
   }
 
   resize() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = this.canvas.clientWidth || window.innerWidth;
     const h = this.canvas.clientHeight || window.innerHeight;
     this.dpr = dpr;
@@ -30,18 +37,36 @@ export class Renderer {
     this.canvas.height = Math.round(h * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.cam.resize(w, h);
-    this._buildBackdrop();
+    this.layerExtra = Math.ceil(h * FOLLOW_MAX) + 8;
+    this._buildLayers();
   }
 
-  _buildBackdrop() {
+  // Renders the static scenery into offscreen canvases at follow = 0. The layers
+  // run taller than the canvas so that panning up never exposes bare pixels.
+  _buildLayers() {
+    const keep = this.cam.follow;
+    this.cam.setFollow(0);
+    const live = this.ctx;
+    const tall = this.h + this.layerExtra;
+    for (const [canvas, paint] of [
+      [this.sceneLayer, (g) => { this._paintBackdrop(g); this.drawCourt(); }],
+      [this.netLayer, () => this.drawNet()],
+    ]) {
+      canvas.width = Math.round(this.w * this.dpr);
+      canvas.height = Math.round(tall * this.dpr);
+      const g = canvas.getContext('2d');
+      g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      g.clearRect(0, 0, this.w, tall);
+      this.ctx = g;
+      paint(g);
+    }
+    this.ctx = live;
+    this.cam.setFollow(keep);
+  }
+
+  _paintBackdrop(g) {
     const { cam } = this;
-    const w = this.w, h = this.h;
-    const bc = this.backdrop;
-    bc.width = Math.round(w * this.dpr);
-    bc.height = Math.round(h * this.dpr);
-    const g = bc.getContext('2d');
-    g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-    g.clearRect(0, 0, w, h);
+    const w = this.w, h = this.h + this.layerExtra;
 
     const hoardBase = cam.groundY(18);
     const hoardTop = cam.project(0, 18, 1.7).y;
@@ -253,6 +278,23 @@ export class Renderer {
     }
   }
 
+  drawServeBox(box) {
+    const { ctx } = this;
+    const pts = [[box.x0, box.y0], [box.x1, box.y0], [box.x1, box.y1], [box.x0, box.y1]];
+    const pulse = 0.5 + Math.sin(this.time * 3.4) * 0.5;
+    ctx.save();
+    this._path(pts);
+    ctx.fillStyle = `rgba(232, 255, 90, ${0.07 + pulse * 0.05})`;
+    ctx.fill();
+    ctx.strokeStyle = `rgba(232, 255, 90, ${0.45 + pulse * 0.35})`;
+    ctx.lineWidth = 2;
+    ctx.setLineDash([9, 7]);
+    ctx.lineDashOffset = -this.time * 26;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
   drawDecals(decals) {
     const { ctx, cam } = this;
     for (const d of decals) {
@@ -308,7 +350,6 @@ export class Renderer {
   }
 
   drawBall(ball) {
-    if (ball.held && !ball.live) return;
     const { ctx, cam } = this;
 
     // Trail.
@@ -344,7 +385,6 @@ export class Renderer {
   }
 
   drawBallShadow(ball) {
-    if (ball.held && !ball.live) return;
     const { ctx, cam } = this;
     const p = cam.project(ball.x, ball.y, 0.004);
     const spread = 1 + clamp(ball.z, 0, 8) * 0.16;
@@ -590,14 +630,14 @@ export class Renderer {
     }
 
     const p0 = game.players[0];
-    const want = clamp((-p0.y - 12.9) / 4.0, 0, 1) * this.h * 0.085;
+    const want = clamp((-p0.y - 12.9) / 4.0, 0, 1) * this.h * FOLLOW_MAX;
     this.follow += (want - this.follow) * Math.min(1, dt * 5);
     this.cam.setFollow(this.follow);
 
-    ctx.clearRect(-40, -40, this.w + 80, this.h + 80);
-    ctx.drawImage(this.backdrop, 0, -this.follow, this.w, this.h);
+    const tall = this.h + this.layerExtra;
+    ctx.drawImage(this.sceneLayer, 0, -this.follow, this.w, tall);
 
-    this.drawCourt();
+    if (game.showServeBox) this.drawServeBox(game.showServeBox);
     this.drawDecals(game.decals);
     if (game.aim) this.drawAim(game.aim);
 
@@ -608,7 +648,7 @@ export class Renderer {
     // Painter's order back to front.
     const items = [
       { y: far.y, draw: () => this.drawPlayer(far, { number: 7 }) },
-      { y: 0, draw: () => this.drawNet() },
+      { y: 0, draw: () => this.ctx.drawImage(this.netLayer, 0, -this.follow, this.w, tall) },
       { y: ball.y, draw: () => { this.drawBallShadow(ball); this.drawBall(ball); } },
       { y: near.y, draw: () => this.drawPlayer(near, {
           number: 1,

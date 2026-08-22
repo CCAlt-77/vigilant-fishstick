@@ -50,11 +50,19 @@ export class TouchInput {
     el.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
-  _rect() { return this.el.getBoundingClientRect(); }
+  // Cached: reading it on every pointermove forces a layout mid-drag, which is
+  // exactly when the phone can least afford one.
+  _rect() {
+    if (!this._cachedRect) this._cachedRect = this.el.getBoundingClientRect();
+    return this._cachedRect;
+  }
+
+  invalidateRect() { this._cachedRect = null; }
 
   _down(e) {
     e.preventDefault();
     if (this.active) return;
+    this.invalidateRect();
     const r = this._rect();
     this.active = {
       id: e.pointerId,

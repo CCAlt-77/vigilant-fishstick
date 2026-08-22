@@ -8,23 +8,20 @@ own; your job is choosing and shaping the shot.
 
 ## Playing it on your phone
 
-**As a website.** `.github/workflows/pages.yml` publishes to GitHub Pages on every
-push, and turns Pages on the first time it runs, so there is nothing to configure:
+**As a website.** GitHub Pages publishes this repository straight from the branch
+root, so every push is live within a minute or two:
 
 ```
-https://ccalt-77.github.io/vigilant-fishstick/              the installable app
-https://ccalt-77.github.io/vigilant-fishstick/standalone.html   the single-file build
+https://ccalt-77.github.io/vigilant-fishstick/        the installable app
+https://ccalt-77.github.io/vigilant-fishstick/dist/   the single-file build
 ```
 
-It gates on the scoring and serving tests, rebuilds the bundle, and force-pushes the
-site to a `gh-pages` branch. It publishes that way rather than through the Pages
-"GitHub Actions" source because that source deploys via the `github-pages`
-environment, which by default only accepts deployments from the default branch — and
-this work lives on a feature branch. If the automatic enable is ever refused, the run
-logs say so and the `gh-pages` branch is already built: **Settings → Pages → Deploy
-from a branch → `gh-pages` → `/ (root)`** finishes the job.
+`.nojekyll` at the root keeps Pages from running the site through Jekyll.
+`.github/workflows/tests.yml` runs the scoring, serving and balance checks on every
+push, verifies `dist/` matches the source, and confirms the files the site needs are
+present — a green run is already deployed.
 
-Any static host works too — serve the repository root and open `index.html`.
+Any static host works too: serve the repository root and open `index.html`.
 
 **As an app.** Open that URL in Safari, tap the Share button, then **Add to Home
 Screen**. It launches full screen with no browser chrome, and the service worker keeps

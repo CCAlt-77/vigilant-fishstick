@@ -78,6 +78,7 @@ function playPoints(diffKey, points, opts = {}) {
 }
 
 const SWEEP = process.argv[2] ? JSON.parse(process.argv[2]) : {};
+let broken = 0;
 for (const d of ['easy', 'medium', 'hard']) {
   const o = { ...SWEEP };
   if (SWEEP.aiSpeeds) o.aiSpeed = SWEEP.aiSpeeds[d];
@@ -107,4 +108,16 @@ for (const d of ['easy', 'medium', 'hard']) {
     '| yourErr', String(yourErrors).padStart(3), 'aiErr', String(aiErrors).padStart(3),
     'yourWin', String(yourWinners).padStart(3), 'aiWin', String(aiWinners).padStart(3)
   );
+
+  // Loose guards only: the win rates move around by several points run to run,
+  // so assert on the things that mean the game is actually broken rather than
+  // merely tuned differently.
+  if (log.length < 20) { console.log(`  FAIL ${d}: only ${log.length} points played — points are not completing`); broken++; }
+  if (med < 2) { console.log(`  FAIL ${d}: median rally ${med} — rallies are not happening`); broken++; }
+  if (yourErrors + aiErrors === 0) { console.log(`  FAIL ${d}: no errors at all — the in/out rules look inert`); broken++; }
+}
+
+if (broken) {
+  console.log(`balance: ${broken} problem(s)`);
+  process.exit(1);
 }

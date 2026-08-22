@@ -1,7 +1,19 @@
 import { COURT, PALETTE, netHeightAt } from './config.js';
+import { SWIPE } from './input.js';
 import { clamp, lerp, easeOut, mulberry32 } from './util.js';
 
 const LINE = 0.05;
+
+function roundedRect(ctx, x, y, w, h, r) {
+  if (typeof ctx.roundRect === 'function') { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return; }
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
 // How far the camera may pan up, as a fraction of canvas height.
 const FOLLOW_MAX = 0.085;
 const BASELINE_W = 0.10;
@@ -24,6 +36,8 @@ export class Renderer {
     this.follow = 0;
     this.time = 0;
     this.crowdEnergy = 0.35;
+    this._gaugeCache = new Map();
+    this._chipCache = new Map();
   }
 
   resize() {
@@ -38,6 +52,8 @@ export class Renderer {
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.cam.resize(w, h);
     this.layerExtra = Math.ceil(h * FOLLOW_MAX) + 8;
+    this._gaugeCache.clear();
+    this._chipCache.clear();
     this._buildLayers();
   }
 
@@ -276,6 +292,126 @@ export class Renderer {
       this._fillQuad([[x - 0.06, -0.06, 0], [x + 0.06, -0.06, 0], [x + 0.06, -0.06, top], [x - 0.06, -0.06, top]], '#233246');
       this._fillQuad([[x - 0.06, 0.06, 0], [x + 0.06, 0.06, 0], [x + 0.06, 0.06, top], [x - 0.06, 0.06, top]], '#1a2536');
     }
+  }
+
+  // While the thumb is down, show the scale the shot is chosen from: how far up
+  // you drag picks the shot, so it should be something you can see and correct
+  // before you let go, not something you learn by trial and error.
+  //
+  // The panel and its labels are pre-rendered per variant. Drawing six runs of
+  // text every frame of a drag was costing more than the rest of the scene put
+  // together.
+  _gaugeGeom() {
+    const H = this.h;
+    const top = H * 0.31, bottom = H * 0.79;
+    return { top, bottom, w: 44, span: 0.44, pad: 20, height: bottom - top + 40 };
+  }
+
+  _gaugePanel(variant) {
+    let c = this._gaugeCache.get(variant);
+    if (c) return c;
+    const geo = this._gaugeGeom();
+    const yFor = (u) => (geo.bottom - geo.top + geo.pad) - (clamp(u, 0, geo.span) / geo.span) * (geo.bottom - geo.top);
+
+    c = document.createElement('canvas');
+    c.width = Math.round(geo.w * this.dpr);
+    c.height = Math.round(geo.height * this.dpr);
+    const g = c.getContext('2d');
+    g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+    roundedRect(g, 0.5, 0.5, geo.w - 1, geo.height - 1, 12);
+    g.fillStyle = 'rgba(8,16,26,0.58)';
+    g.fill();
+    g.strokeStyle = 'rgba(148,180,214,0.22)';
+    g.lineWidth = 1;
+    g.stroke();
+
+    const isUp = variant !== 'other';
+    const band = (a, b, fill) => {
+      g.fillStyle = fill;
+      g.fillRect(5, yFor(b), geo.w - 10, yFor(a) - yFor(b));
+    };
+    band(SWIPE.short, SWIPE.lob, isUp ? 'rgba(232,255,90,0.13)' : 'rgba(148,180,214,0.07)');
+    band(SWIPE.lob, geo.span, variant === 'lob' ? 'rgba(232,255,90,0.34)' : 'rgba(148,180,214,0.10)');
+
+    g.font = '600 8px ui-sans-serif, system-ui, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillStyle = variant === 'lob' ? '#e8ff5a' : 'rgba(200,216,232,0.65)';
+    g.fillText('LOB', geo.w / 2, (yFor(SWIPE.lob) + yFor(geo.span)) / 2);
+    g.fillStyle = 'rgba(200,216,232,0.55)';
+    g.fillText('DEEP', geo.w / 2, yFor(SWIPE.lob) + 12);
+    g.fillText('SHORT', geo.w / 2, yFor(SWIPE.short) - 10);
+    g.fillStyle = 'rgba(200,216,232,0.4)';
+    g.fillText('TAP', geo.w / 2, yFor(0) + 11);
+
+    this._gaugeCache.set(variant, c);
+    return c;
+  }
+
+  _gaugeChip(label) {
+    let c = this._chipCache.get(label);
+    if (c) return c;
+    const probe = this.ctx;
+    probe.save();
+    probe.font = '800 11px ui-sans-serif, system-ui, sans-serif';
+    const tw = probe.measureText(label).width;
+    probe.restore();
+    const w = tw + 14, h = 22;
+    c = document.createElement('canvas');
+    c.width = Math.round(w * this.dpr);
+    c.height = Math.round(h * this.dpr);
+    const g = c.getContext('2d');
+    g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    roundedRect(g, 0, 0, w, h, 7);
+    g.fillStyle = 'rgba(8,16,26,0.78)';
+    g.fill();
+    g.font = '800 11px ui-sans-serif, system-ui, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillStyle = '#e8ff5a';
+    g.fillText(label, w / 2, h / 2 + 0.5);
+    c._w = w;
+    c._h = h;
+    this._chipCache.set(label, c);
+    return c;
+  }
+
+  drawSwipeGauge(drag) {
+    const { ctx } = this;
+    const g = drag.g;
+    const geo = this._gaugeGeom();
+    const onRight = drag.x0 < this.w * 0.5;        // sit opposite the thumb
+    const x = onRight ? this.w - geo.w - 12 : 12;
+    const panelTop = geo.top - geo.pad;
+    const yFor = (u) => geo.bottom - (clamp(u, 0, geo.span) / geo.span) * (geo.bottom - geo.top);
+
+    const isUp = g.type === 'drive' || g.type === 'power' || g.type === 'lob';
+    const variant = g.type === 'lob' ? 'lob' : isUp ? 'up' : 'other';
+    ctx.drawImage(this._gaugePanel(variant), x, panelTop, geo.w, geo.height);
+
+    const my = yFor(isUp ? (g.up || 0) : 0);
+    if (isUp) {
+      ctx.strokeStyle = '#e8ff5a';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(x + 3, my);
+      ctx.lineTo(x + geo.w - 3, my);
+      ctx.stroke();
+      ctx.fillStyle = '#e8ff5a';
+      ctx.beginPath();
+      ctx.arc(x + (onRight ? 3 : geo.w - 3), my, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const label = g.type === 'power' ? 'FLAT DRIVE'
+      : g.type === 'drop' ? 'DROP SHOT'
+      : g.type === 'slice' ? 'ANGLE'
+      : g.type === 'lob' ? 'LOB' : 'DRIVE';
+    const chip = this._gaugeChip(label);
+    const cy = (isUp ? my : geo.bottom) - chip._h / 2;
+    const cx = onRight ? x - 10 - chip._w : x + geo.w + 10;
+    ctx.drawImage(chip, cx, cy, chip._w, chip._h);
   }
 
   drawServeBox(box) {
@@ -612,10 +748,12 @@ export class Renderer {
     ctx.fillStyle = ctx.strokeStyle;
     ctx.fill();
     ctx.globalAlpha = 1;
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = '600 13px ui-sans-serif, system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(aim.label, p.x, p.y - r * 0.6 - 8);
+    if (aim.showLabel) {
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '600 13px ui-sans-serif, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(aim.label, p.x, p.y - r * 0.6 - 8);
+    }
     ctx.restore();
   }
 
@@ -660,6 +798,7 @@ export class Renderer {
     for (const it of items) it.draw();
 
     this.drawEffects(game.effects);
+    if (game.dragState) this.drawSwipeGauge(game.dragState);
     ctx.restore();
   }
 }

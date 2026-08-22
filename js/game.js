@@ -4,7 +4,7 @@ import { Renderer } from './render.js';
 import { Ball, Player } from './entities.js';
 import { AI } from './ai.js';
 import { Match } from './scoring.js';
-import { TouchInput } from './input.js';
+import { TouchInput, SWIPE } from './input.js';
 import { sfx } from './audio.js';
 import { solveShot, predictIntercept, predictBounce, inSinglesCourt, inServiceBox } from './physics.js';
 import { clamp, lerp, rand, chance } from './util.js';
@@ -12,6 +12,16 @@ import { clamp, lerp, rand, chance } from './util.js';
 const SERVE_MOTION = 0.62;
 // A beat to read the opponent's shot before setting off after it.
 const HUMAN_READ = 0.15;
+
+// Practice walks through the shots one at a time, so the gestures are taught
+// rather than left to be discovered.
+const COACH = [
+  { type: 'drive', hint: 'Swipe up for a drive — the higher you drag, the deeper it lands' },
+  { type: 'power', hint: 'Now flick up fast for a flat drive' },
+  { type: 'lob',   hint: 'Now drag up past the LOB band at the top of the gauge' },
+  { type: 'drop',  hint: 'Now swipe down for a drop shot' },
+  { type: 'slice', hint: 'Now swipe sideways for an angle into the tramlines' },
+];
 
 export class Game {
   constructor(canvas, hooks = {}) {
@@ -44,9 +54,11 @@ export class Game {
     this.practiceScore = { rally: 0, best: 0 };
 
     this.input = new TouchInput(canvas, {
-      onDrag: (g) => this.onDrag(g),
+      onStart: (a) => { this.dragState = { g: { type: 'drive', up: 0, aim: 0 }, x0: a.x0, y0: a.y0 }; },
+      onDrag: (g, a) => this.onDrag(g, a),
       onSwipe: (g) => this.onSwipe(g),
     });
+    this.dragState = null;
 
     this._loop = this._loop.bind(this);
   }
@@ -74,6 +86,7 @@ export class Game {
     this.pendingSwipe = null;
     this.practiceScore = { rally: 0, best: this.practiceScore.best };
     this.practicePoints = 0;
+    this.coach = 0;
     this.serveNumber = 1;
 
     if (config.mode === 'practice') {
@@ -184,6 +197,7 @@ export class Game {
 
     this.decided = null;
     this.readTimer = 0;
+    this.lastStrikeY = [null, null];
     this.rallyShots = 0;
     this.serveTimer = server === 0 ? 0 : rand(0.7, 1.1);
     this.state = 'serve-ready';
@@ -193,7 +207,7 @@ export class Game {
 
     if (this.config.mode === 'practice') {
       const where = court === 'deuce' ? 'Deuce court' : 'Ad court';
-      this.prompt(`${where} — swipe up to serve into the marked box`);
+      this.prompt(`${where} — serve, then: ${COACH[this.coach % COACH.length].hint}`);
     } else if (server === 0) {
       const where = court === 'deuce' ? 'Deuce court' : 'Ad court';
       this.prompt(this.serveNumber === 2
@@ -244,23 +258,39 @@ export class Game {
     this.hooks.onShotLabel && this.hooks.onShotLabel(this.serveNumber === 2 ? 'SECOND SERVE' : 'SERVE');
   }
 
+  // The serve target can go anywhere in the box. Sideways drag moves it across,
+  // upward drag moves it deeper, and how hard you flick sets the pace — so
+  // placement and power are separate choices rather than the same one.
   humanServePlan(g) {
-    const court = this.serveCourt();
-    const wantPos = court !== 'deuce';   // near player's deuce serve lands at x < 0
+    const box = this.serviceBox(0, this.pointCourt);
+    const wantPos = box.wantPositiveX;
     const second = this.serveNumber === 2;
-    const power = clamp(g.power, 0.5, 1.25);
-    const power2 = clamp(power - 0.5, 0, 0.75) / 0.75;
-    const T = second ? lerp(1.00, 0.90, power2) : lerp(0.88, 0.74, power2);
-    const lateral = clamp(g.aim, -1, 1);
-    const inner = second ? 0.9 : 0.5;
-    const outer = second ? 3.2 : 3.8;
-    const mag = lerp(inner, outer, (lateral * (wantPos ? 1 : -1) + 1) / 2);
-    const tx = (wantPos ? 1 : -1) * clamp(mag, 0.3, 3.85);
-    // A harder serve lands deeper in the box. No randomness: what the marker
-    // shows while your thumb is down is exactly where the serve is aimed.
-    const depth = second ? lerp(3.9, 5.4, power2) : lerp(4.5, 6.0, power2);
-    const ty = (this.players[0].side < 0 ? 1 : -1) * depth;
+
+    // Across the box, moving the way your thumb moves: 0 is down the T, 1 is wide.
+    const lateral = clamp(g.aim || 0, -1, 1);
+    const across = wantPos ? (lateral + 1) / 2 : (1 - lateral) / 2;
+    const tx = (wantPos ? 1 : -1) * lerp(0.30, second ? 3.35 : 3.90, across);
+
+    // Up the box: a longer drag lands the serve deeper.
+    const reach = clamp((g.up || 0) / SWIPE.lob, 0, 1);
+    const ty = -this.players[0].side * lerp(2.1, second ? 5.85 : 6.25, reach);
+
+    // Pace from the flick, so aiming carefully does not cost you a big serve.
+    const flick = clamp((g.speed || 0) / 2.2, 0, 1);
+    const drive = 0.4 * reach + 0.6 * flick;
+    const T = second ? lerp(1.02, 0.88, drive) : lerp(0.94, 0.70, drive);
     return { target: { x: tx, y: ty }, T };
+  }
+
+  servePath(plan) {
+    const from = this.serveContact(0);
+    const v = solveShot(from, { x: plan.target.x, y: plan.target.y, z: 0 }, { ...SHOTS.power, clear: 0.10, T: plan.T });
+    const path = [];
+    for (let i = 0; i <= 14; i++) {
+      const t = (v.T * i) / 14;
+      path.push([from.x + v.vx * t, from.y + v.vy * t, Math.max(0, from.z + v.vz * t - 0.5 * G * t * t)]);
+    }
+    return path;
   }
 
   // ------------------------------------------------------------------ striking
@@ -296,18 +326,12 @@ export class Game {
   humanPlan(g) {
     const spec = SHOTS[g.type];
     const opp = this.players[1];
-    const depthT = clamp((g.power - 0.45) / 0.8, 0, 1);
+    const depthT = clamp(g.depth != null ? g.depth : 0.55, 0, 1);
     let depth = lerp(spec.depth[0], spec.depth[1], depthT);
-    let tx;
+    let tx = g.aim * spec.spread;
     if (g.tap) {
-      tx = clamp(-opp.x * 0.75, -3.0, 3.0);
-      depth = lerp(spec.depth[0], spec.depth[1], 0.55);
-    } else if (g.type === 'slice') {
-      tx = g.aim * lerp(2.9, 4.05, depthT);
-    } else if (g.type === 'drop') {
-      tx = g.aim * 3.1;
-    } else {
-      tx = g.aim * spec.spread;
+      tx = clamp(-opp.x * 0.8, -3.4, 3.4);
+      depth = lerp(spec.depth[0], spec.depth[1], 0.62);
     }
     return { type: g.type, target: { x: tx, y: depth }, power: g.power };
   }
@@ -319,10 +343,11 @@ export class Game {
     const quality = plan.quality != null ? plan.quality : this.strikeQuality(idx);
 
     const from = { x: b.x, y: b.y, z: clamp(b.z, 0.22, 2.9) };
+    this.lastStrikeY[idx] = b.y;
     const target = { x: plan.target.x, y: plan.target.y, z: 0 };
 
     // Mis-timed contact scatters the ball.
-    const scatter = (1 - quality) * 3.6;
+    const scatter = (1 - quality) * 3.0;
     target.x += rand(-scatter, scatter);
     target.y += rand(-scatter * 0.85, scatter * 0.85) * (idx === 0 ? 1 : -1) * -1;
 
@@ -360,6 +385,12 @@ export class Game {
       if (perfect) this.addEffect('ring', from.x, from.y, from.z, 0.42, { size: 1.4, colour: '#e8ff5a' });
     }
     if (this.config.mode === 'practice') {
+      const want = COACH[this.coach % COACH.length];
+      if (plan.type === want.type) {
+        this.coach++;
+        this.announce('NICE', spec.label, 'good');
+        this.prompt(`Try: ${COACH[this.coach % COACH.length].hint}`);
+      }
       this.practiceScore.rally++;
       this.practiceScore.best = Math.max(this.practiceScore.best, this.practiceScore.rally);
       this.hooks.onPractice && this.hooks.onPractice(this.practiceScore);
@@ -368,14 +399,15 @@ export class Game {
 
   // -------------------------------------------------------------------- input
 
-  onDrag(g) {
+  onDrag(g, a) {
+    if (a) this.dragState = { g, x0: a.x0, y0: a.y0 };
     if (this.state === 'rally' && this.ball.lastHitBy !== 0) {
       this.aim = this.previewAim(g);
     } else if (this.state === 'serve-ready' && this.serverIdx() === 0) {
       const plan = this.humanServePlan(g);
       this.aim = {
         x: plan.target.x, y: plan.target.y, label: this.serveNumber === 2 ? 'SECOND SERVE' : 'SERVE',
-        risky: false, path: null,
+        risky: false, path: this.servePath(plan), showLabel: true,
       };
     } else {
       this.aim = null;
@@ -390,7 +422,7 @@ export class Game {
     if (this.canStrike(0)) {
       from = { x: b.x, y: b.y, z: clamp(b.z, 0.22, 2.4) };
     } else {
-      const s = predictIntercept(b, -1, 2.2);
+      const s = predictIntercept(b, -1, 2.2, this.players[0].y);
       if (!s) return null;
       from = { x: s.x, y: s.y, z: clamp(s.z, 0.3, 1.6) };
     }
@@ -406,11 +438,12 @@ export class Game {
       path.push([from.x + v.vx * t, from.y + v.vy * t, Math.max(0, from.z + v.vz * t - 0.5 * G * t * t)]);
     }
     const risky = !inSinglesCourt(plan.target.x, ty, -0.15);
-    return { x: plan.target.x, y: ty, label: spec.label, risky, path };
+    return { x: plan.target.x, y: ty, label: spec.label, risky, path, showLabel: false };
   }
 
   onSwipe(g) {
     this.aim = null;
+    this.dragState = null;
     if (!this.running || this.paused) return;
     sfx.ensure();
 
@@ -700,6 +733,16 @@ export class Game {
     this.beginPoint();
   }
 
+  recoveryY(idx) {
+    const p = this.players[idx];
+    const base = p.side * (COURT.halfLen + 0.55);
+    const struck = this.lastStrikeY[idx];
+    if (struck == null) return base;
+    if (Math.abs(struck) > 9.2) return base;
+    const closed = struck - p.side * 2.6;
+    return p.side < 0 ? clamp(closed, base, -4.2) : clamp(closed, 4.2, base);
+  }
+
   // Human movement: run to the ball automatically, the player supplies the shot.
   updateHuman(dt) {
     const p = this.players[0];
@@ -710,7 +753,7 @@ export class Game {
     }
     if (b.lastHitBy === 0) {
       const cover = clamp(-this.players[1].x * 0.25, -2.2, 2.2);
-      p.moveTowards(cover, p.side * (COURT.halfLen + 0.55), dt, 0.8);
+      p.moveTowards(cover, this.recoveryY(0), dt, 0.85);
       return;
     }
 
@@ -730,7 +773,7 @@ export class Game {
       }
     }
 
-    const s = predictIntercept(b, -1, 2.2);
+    const s = predictIntercept(b, -1, 2.2, p.y);
     if (!s) return;
     const ty = clamp(s.y, -(COURT.halfLen + 4.8), -0.85);
     p.moveTowards(s.x, ty, dt, 1);

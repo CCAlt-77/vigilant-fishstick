@@ -35,6 +35,18 @@ const setPace = (p) => { for (const k of Object.keys(SHOTS)) SHOTS[k].T = BASE_T
 
 const TYPES = ['drive', 'drive', 'drive', 'drive', 'power', 'power', 'lob', 'drop', 'slice'];
 
+// Stands in for a competent player: aims to a side most of the time but rarely
+// paints the line, and mostly hits deep. Spraying every ball at full width is
+// not what a person does, and measuring against that would mis-tune the game.
+const aimLike = () => {
+  const r = Math.random();
+  const side = Math.random() < 0.5 ? -1 : 1;
+  if (r < 0.15) return side * (0.85 + Math.random() * 0.15);
+  if (r < 0.55) return side * (0.35 + Math.random() * 0.45);
+  return side * Math.random() * 0.3;
+};
+const depthLike = () => (Math.random() < 0.25 ? 0.15 + Math.random() * 0.4 : 0.6 + Math.random() * 0.4);
+
 function playPoints(diffKey, points, opts = {}) {
   setPace(opts.pace || 1);
   const game = new Game(fakeCanvas, {});
@@ -64,11 +76,16 @@ function playPoints(diffKey, points, opts = {}) {
   while (log.length < points && steps < points * 3000) {
     steps++;
     if (game.state === 'serve-ready' && game.serverIdx() === 0) {
-      game.onSwipe({ type: 'drive', aim: (Math.random() - 0.5) * 1.6, power: 0.8 + Math.random() * 0.4 });
+      game.onSwipe({
+        type: 'drive', aim: aimLike(),
+        up: 0.12 + Math.random() * 0.22,          // how far up the box it is aimed
+        speed: 1.1 + Math.random() * 1.3,          // how hard it is struck
+        depth: 0.6, power: 0.9,
+      });
     } else if (game.state === 'rally' && game.strikeReady && !game.pendingSwipe) {
       // skill < 1 makes the shot sloppier, standing in for a real player's timing.
       const t = TYPES[(Math.random() * TYPES.length) | 0];
-      game.onSwipe({ type: t, aim: Math.random() * 2 - 1, power: 0.55 + Math.random() * 0.6 });
+      game.onSwipe({ type: t, aim: aimLike(), depth: depthLike(), power: 0.55 + Math.random() * 0.6 });
     }
     game.update(1 / 60);
     if (game.state === 'break') game.beginPoint();

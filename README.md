@@ -106,7 +106,8 @@ tools/                build, icon generation and the test harnesses
 
 ```sh
 node tools/test-scoring.mjs    # scoring rules: deuce, tiebreaks, set and match logic
-node tools/test-serve.mjs      # serve legality, court alternation, steady aim preview
+node tools/test-serve.mjs      # serve legality, court alternation, steady preview, box coverage
+node tools/test-shots.mjs      # every shot type reachable, full court covered, player movement range
 node tools/sim.mjs             # headless balance run: rally lengths and win rates per difficulty
 npx http-server -p 8145 -s . & # the browser tests need the site served
 node tools/test-ui.mjs         # menus, tournament flow, pause, saved progress
@@ -117,6 +118,11 @@ node tools/test-perf.mjs URL 2 # frame times under CPU throttling
 
 `tools/sim.mjs` stubs the DOM and runs the real game modules, so a few hundred points
 play out in about a second. It is what the difficulty and rally-length numbers were
-tuned against: a competent-but-unimaginative player wins roughly 85% against Easy, 65%
-against Medium and 45% against Difficult, with median rallies of about 6, 8 and 14
-shots.
+tuned against, standing in for a competent player: aims to a side most of the time but
+rarely paints a line, and mostly hits deep. Against that, you win roughly 77% against
+Easy, 50% against Medium and 35% against Difficult, with median rallies of about 5, 9
+and 9 shots.
+
+`tools/test-perf.mjs` reports frame times under CPU throttling. Read the median — on a
+shared machine the tail swings enough with run order that A/B comparisons come out
+backwards.

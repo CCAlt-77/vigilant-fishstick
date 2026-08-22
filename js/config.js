@@ -49,17 +49,17 @@ export const PALETTE = {
 };
 
 export const SHOTS = {
-  drive:  { label: 'DRIVE',      T: 0.72, depth: [8.2, 10.8], clear: 0.32, rest: 0.72, fric: 0.64, spread: 3.5 },
-  power:  { label: 'FLAT DRIVE', T: 0.60, depth: [9.2, 11.3], clear: 0.18, rest: 0.76, fric: 0.68, spread: 3.7 },
-  lob:    { label: 'LOB',        T: 2.07, depth: [8.4, 10.6], clear: 1.90, rest: 0.50, fric: 0.52, spread: 2.6 },
-  drop:   { label: 'DROP SHOT',  T: 0.92, depth: [1.1, 3.0],  clear: 0.26, rest: 0.40, fric: 0.38, spread: 2.6 },
-  slice:  { label: 'ANGLE',      T: 0.79, depth: [5.2, 8.2],  clear: 0.28, rest: 0.58, fric: 0.74, spread: 4.2 },
+  drive:  { label: 'DRIVE',      T: 0.72, depth: [4.6, 11.0], clear: 0.32, rest: 0.72, fric: 0.64, spread: 3.90 },
+  power:  { label: 'FLAT DRIVE', T: 0.60, depth: [7.0, 11.3], clear: 0.18, rest: 0.76, fric: 0.68, spread: 4.00 },
+  lob:    { label: 'LOB',        T: 2.07, depth: [8.4, 11.0], clear: 1.90, rest: 0.50, fric: 0.52, spread: 3.00 },
+  drop:   { label: 'DROP SHOT',  T: 0.92, depth: [1.1, 3.4],  clear: 0.26, rest: 0.40, fric: 0.38, spread: 3.20 },
+  slice:  { label: 'ANGLE',      T: 0.79, depth: [3.4, 8.6],  clear: 0.28, rest: 0.58, fric: 0.74, spread: 4.35 },
 };
 
 export const DIFFICULTIES = {
   easy:   { key: 'easy',   name: 'Easy',      speed: 3.7, reaction: 0.32, error: 0.200, jitter: 0.85, serveT: 0.95, aggression: 0.15, variety: 0.15, reach: 1.58, pace: 1.22 },
   medium: { key: 'medium', name: 'Medium',    speed: 4.05, reaction: 0.18, error: 0.100, jitter: 0.62, serveT: 0.86, aggression: 0.50, variety: 0.38, reach: 1.70, pace: 0.92 },
-  hard:   { key: 'hard',   name: 'Difficult', speed: 4.5, reaction: 0.07, error: 0.055, jitter: 0.42, serveT: 0.78, aggression: 0.85, variety: 0.62, reach: 1.82, pace: 0.74 },
+  hard:   { key: 'hard',   name: 'Difficult', speed: 4.5, reaction: 0.07, error: 0.075, jitter: 0.42, serveT: 0.78, aggression: 0.85, variety: 0.62, reach: 1.82, pace: 0.74 },
 };
 
 export const FORMATS = {

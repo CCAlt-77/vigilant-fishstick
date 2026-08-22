@@ -1,4 +1,9 @@
 // Frame-time check under CPU throttling, standing in for a phone.
+//
+// Read the median, not the tail. On a shared machine the p95 and the
+// frames-over-20ms figure swing wildly with run order and background load —
+// enough that A/B runs come out backwards. The median is stable and is what
+// tells you whether the loop is holding 60fps.
 import { chromium } from './playwright.mjs';
 
 const throttle = Number(process.argv[3] || 4);

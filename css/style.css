@@ -148,9 +148,9 @@ h3{margin:14px 0 0;font-size:14px;letter-spacing:.1em;text-transform:uppercase;c
 .seg button.on{background:var(--accent);color:var(--accent-ink)}
 .seg button.on small{color:rgba(26,36,16,.75)}
 .gestures{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
-.gestures li{display:flex;gap:12px;align-items:center}
+.gestures li{display:flex;gap:12px;align-items:flex-start}
 .gestures .g{
-  flex:none;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;
+  flex:none;width:42px;height:42px;margin-top:2px;border-radius:12px;display:grid;place-items:center;
   background:rgba(232,255,90,.12);color:var(--accent);font-size:19px;font-weight:800;
   border:1px solid rgba(232,255,90,.25);
 }

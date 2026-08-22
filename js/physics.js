@@ -84,7 +84,7 @@ export function inServiceBox(x, y, side, court) {
 // Where a player on this side should meet the ball. Walks the trajectory forward
 // (including its bounce) and stops at the first place the ball is genuinely
 // playable, or at the deepest sensible standing position if it is running away.
-export function predictIntercept(ball, side, retreat = 2.2, maxT = 3.2) {
+export function predictIntercept(ball, side, retreat = 2.2, standY = null, maxT = 3.2) {
   let x = ball.x, y = ball.y, z = ball.z;
   let vx = ball.vx, vy = ball.vy, vz = ball.vz;
   let bounces = ball.bounces;
@@ -92,6 +92,10 @@ export function predictIntercept(ball, side, retreat = 2.2, maxT = 3.2) {
   const dt = 0.008;
   const limit = COURT.halfLen + retreat;
   const hardLimit = COURT.halfLen + 4.8;
+  // Standing inside the court means taking the ball out of the air rather than
+  // backing up behind the baseline to let it bounce.
+  const forward = standY != null && Math.abs(standY) < 9.5;
+  const volleyLine = forward ? Math.max(0.9, Math.abs(standY) - 1.4) : Infinity;
 
   for (let t = 0; t < maxT; t += dt) {
     x += vx * dt;
@@ -113,6 +117,9 @@ export function predictIntercept(ball, side, retreat = 2.2, maxT = 3.2) {
     const ay = Math.abs(y);
     if ((ay > limit && z < 2.55) || ay > hardLimit) {
       return { x, y, z, t, bounce: first, deep: true };
+    }
+    if (bounces === 0 && forward && ay >= volleyLine && z > 0.25 && z < 2.30) {
+      return { x, y, z, t, bounce: null, deep: false, volley: true };
     }
     if (bounces >= 1 && vz < 0 && z > 0.28 && z < 1.55) {
       return { x, y, z, t, bounce: first, deep: false };

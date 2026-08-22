@@ -74,5 +74,36 @@ for (const mode of ['match', 'practice']) {
   console.log(`  ${mode}: ${r.served} serves, ${r.faults} faults, courts seen: ${[...courts].join('/')}, preview steady: ${r.steady}`);
 }
 
+// The marker has to reach the whole box, not just slide along one line across it.
+{
+  const game = new Game(fc, {});
+  game.start({
+    mode: 'match', difficulty: { ...DIFFICULTIES.easy }, difficultyKey: 'easy', format: FORMATS.classic,
+    opponent: { name: 'Sim', short: 'SIM', colour: '#f00', trim: '#900' }, context: 'serve reach',
+  });
+  game.running = true;
+  for (const court of ['deuce', 'ad']) {
+    game.pointCourt = court;
+    const box = game.serviceBox(0, court);
+    const xs = [];
+    const ys = [];
+    for (const aim of [-1, -0.5, 0, 0.5, 1]) {
+      for (const up of [0.02, 0.10, 0.20, 0.30, 0.40]) {
+        const t = game.humanServePlan({ type: 'drive', aim, up, speed: 1.2, depth: 0.5, power: 0.9 }).target;
+        xs.push(t.x);
+        ys.push(t.y);
+        const inBox = Math.abs(t.x) <= 4.115 && Math.sign(t.x) === Math.sign(box.x1 || 1)
+          && Math.abs(t.y) <= 6.40 && Math.abs(t.y) >= 0.5 && Math.sign(t.y) === box.side;
+        ok(inBox, `${court}: aim ${aim} reach ${up} lands inside the box (${t.x.toFixed(2)}, ${t.y.toFixed(2)})`);
+      }
+    }
+    const xSpan = Math.max(...xs.map(Math.abs)) - Math.min(...xs.map(Math.abs));
+    const ySpan = Math.max(...ys.map(Math.abs)) - Math.min(...ys.map(Math.abs));
+    ok(xSpan > 3.0, `${court}: target spans the box across (${xSpan.toFixed(2)}m of 4.11)`);
+    ok(ySpan > 3.5, `${court}: target spans the box up and down (${ySpan.toFixed(2)}m of 6.40)`);
+    console.log(`  ${court}: across ${xSpan.toFixed(2)}m, deep ${ySpan.toFixed(2)}m`);
+  }
+}
+
 console.log(fails === 0 ? 'serving: all checks passed' : `serving: ${fails} failures`);
 process.exit(fails ? 1 : 0);

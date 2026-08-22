@@ -44,7 +44,7 @@ export class AI {
     if (!incoming) {
       // Ball is on its way to the human: recover towards a covering position.
       const cover = this.recoveryX(game);
-      me.moveTowards(cover, me.side * (COURT.halfLen + 0.6), dt, 0.8);
+      me.moveTowards(cover, game.recoveryY(1), dt, 0.85);
       return;
     }
 
@@ -77,7 +77,7 @@ export class AI {
       return;
     }
 
-    const strike = predictIntercept(ball, 1, 2.2);
+    const strike = predictIntercept(ball, 1, 2.2, me.y);
     if (!strike) return;
 
     // Weaker opponents read the ball less precisely.
@@ -142,7 +142,13 @@ export class AI {
     if (type === 'drop') targetX = openSide * rand(1.4, 3.4);
     if (type === 'lob') targetX = clamp(-humanX * 0.4, -2.8, 2.8);
 
-    const depth = rand(spec.depth[0], spec.depth[1]);
+    // A mix of depths: mostly deep, but short enough often enough to drag the
+    // other player into the court.
+    const shortBall = type === 'drive' || type === 'slice';
+    const depthRoll = shortBall && chance(0.20 + p.variety * 0.22)
+      ? rand(0.10, 0.45)
+      : rand(0.58, 1.0);
+    const depth = lerp(spec.depth[0], spec.depth[1], depthRoll);
     let targetY = -depth;
 
     // Error: scale the jitter, and occasionally commit a genuine miss.
@@ -153,7 +159,7 @@ export class AI {
     let forceError = null;
     if (chance(p.error * (1 + stretched * 1.4))) {
       forceError = chance(0.45) ? 'net' : 'long';
-      if (forceError === 'long') targetY -= rand(0.6, 1.8);
+      if (forceError === 'long') targetY = -(COURT.halfLen + rand(0.25, 1.30));
     }
 
     targetX = clamp(targetX, -(COURT.halfSingles + 1.4), COURT.halfSingles + 1.4);

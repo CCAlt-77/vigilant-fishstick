@@ -164,9 +164,9 @@ h3{margin:14px 0 0;font-size:14px;letter-spacing:.1em;text-transform:uppercase;c
 .seg button.on{background:var(--accent);color:var(--accent-ink)}
 .seg button.on small{color:rgba(26,36,16,.75)}
 .gestures{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
-.gestures li{display:flex;gap:12px;align-items:center}
+.gestures li{display:flex;gap:12px;align-items:flex-start}
 .gestures .g{
-  flex:none;width:42px;height:42px;border-radius:12px;display:grid;place-items:center;
+  flex:none;width:42px;height:42px;margin-top:2px;border-radius:12px;display:grid;place-items:center;
   background:rgba(232,255,90,.12);color:var(--accent);font-size:19px;font-weight:800;
   border:1px solid rgba(232,255,90,.25);
 }
@@ -296,16 +296,21 @@ h3{margin:14px 0 0;font-size:14px;letter-spacing:.1em;text-transform:uppercase;c
       <p class="sub">You are the player at the bottom of the screen, hitting up the court. Your player runs to the ball on their own — your job is the shot.</p>
       <ul class="gestures">
         <li><span class="g">•</span><div><strong>Tap</strong>Standard drive into the open court.</div></li>
-        <li><span class="g">↑</span><div><strong>Flick up fast</strong>Flat power drive, deep and low.</div></li>
-        <li><span class="g">⇧</span><div><strong>Long slow drag up</strong>Lob, high over their head.</div></li>
+        <li><span class="g">↑</span><div><strong>Swipe up</strong>Drive. How far up you drag sets how deep it lands — a short drag drops it near the service line, a long one pushes them back to the baseline.</div></li>
+        <li><span class="g">⇡</span><div><strong>Flick up fast</strong>The same drive hit flat and hard.</div></li>
+        <li><span class="g">⇧</span><div><strong>Drag up past the top</strong>Lob, high over their head.</div></li>
         <li><span class="g">↓</span><div><strong>Swipe down</strong>Drop shot, dying just over the net.</div></li>
         <li><span class="g">↔</span><div><strong>Swipe sideways</strong>Angled slice into the tramlines.</div></li>
       </ul>
-      <p class="sub">Any swipe's sideways lean steers the ball left or right — swipe up and to the right to drive down the right-hand line.</p>
+      <h3>The gauge</h3>
+      <p class="sub">While your thumb is down, a scale appears on the far side of the screen showing where your swipe sits: <strong>SHORT</strong> at the bottom, <strong>DEEP</strong> higher up, and a <strong>LOB</strong> band at the top. The shot it will play is named beside the marker, and the landing spot and the ball's flight are drawn on the court. Nothing is committed until you lift your thumb, so slide up and down until it says what you want.</p>
+      <p class="sub">The sideways lean of any swipe steers the ball across the court — swipe up and to the right to drive down the right-hand line. Lean further for a sharper angle, but the closer you aim to the lines the more a mistimed contact will cost you.</p>
       <h3>Timing</h3>
-      <p class="sub">A ring appears around your player when a ball is on the way. Swipe as it reaches you: strike it in the middle of the ring for a clean, accurate shot. Swipe early and it is buffered, so you can commit before the ball arrives.</p>
+      <p class="sub">A ring appears around your player when a ball is on the way. Swipe as it reaches you: meeting it while balanced gives a clean, accurate shot, while hitting on the run or at full stretch scatters it. Swipe early and it is buffered, so you can commit before the ball arrives.</p>
+      <h3>Coming forward</h3>
+      <p class="sub">Take a short ball inside the baseline and your player follows it in towards the net instead of trudging back, and volleys the next one out of the air. Good for finishing points — and the reason your opponent will start lobbing you.</p>
       <h3>Serving</h3>
-      <p class="sub">The service box you have to hit is marked on the far court, and it swaps side every point, so the target only ever moves within that box — that is the rule, not a limit on your aim. Swipe up to serve: a longer, faster swipe means a bigger serve that lands deeper, and the sideways lean moves it between the centre line and out wide. Two serves, as usual — the second is automatically safer.</p>
+      <p class="sub">The service box you have to hit is marked on the far court, and it swaps side every point. The target marker moves anywhere inside it: drag sideways to move it across, between the centre line and out wide, and drag further up to push it deeper into the box. How hard you flick sets the pace, separately from where you aimed, so taking care over placement does not cost you a big serve. Two serves, as usual — the second is automatically safer.</p>
       <h3>Scoring</h3>
       <p class="sub">Normal tennis. 15, 30, 40, deuce and advantage, six games to a set with a tiebreak at 6-6. Quick matches use a short set to four games.</p>
       <button class="btn ghost back" data-back>Back</button>
@@ -438,17 +443,17 @@ const PALETTE = {
 };
 
 const SHOTS = {
-  drive:  { label: 'DRIVE',      T: 0.72, depth: [8.2, 10.8], clear: 0.32, rest: 0.72, fric: 0.64, spread: 3.5 },
-  power:  { label: 'FLAT DRIVE', T: 0.60, depth: [9.2, 11.3], clear: 0.18, rest: 0.76, fric: 0.68, spread: 3.7 },
-  lob:    { label: 'LOB',        T: 2.07, depth: [8.4, 10.6], clear: 1.90, rest: 0.50, fric: 0.52, spread: 2.6 },
-  drop:   { label: 'DROP SHOT',  T: 0.92, depth: [1.1, 3.0],  clear: 0.26, rest: 0.40, fric: 0.38, spread: 2.6 },
-  slice:  { label: 'ANGLE',      T: 0.79, depth: [5.2, 8.2],  clear: 0.28, rest: 0.58, fric: 0.74, spread: 4.2 },
+  drive:  { label: 'DRIVE',      T: 0.72, depth: [4.6, 11.0], clear: 0.32, rest: 0.72, fric: 0.64, spread: 3.90 },
+  power:  { label: 'FLAT DRIVE', T: 0.60, depth: [7.0, 11.3], clear: 0.18, rest: 0.76, fric: 0.68, spread: 4.00 },
+  lob:    { label: 'LOB',        T: 2.07, depth: [8.4, 11.0], clear: 1.90, rest: 0.50, fric: 0.52, spread: 3.00 },
+  drop:   { label: 'DROP SHOT',  T: 0.92, depth: [1.1, 3.4],  clear: 0.26, rest: 0.40, fric: 0.38, spread: 3.20 },
+  slice:  { label: 'ANGLE',      T: 0.79, depth: [3.4, 8.6],  clear: 0.28, rest: 0.58, fric: 0.74, spread: 4.35 },
 };
 
 const DIFFICULTIES = {
   easy:   { key: 'easy',   name: 'Easy',      speed: 3.7, reaction: 0.32, error: 0.200, jitter: 0.85, serveT: 0.95, aggression: 0.15, variety: 0.15, reach: 1.58, pace: 1.22 },
   medium: { key: 'medium', name: 'Medium',    speed: 4.05, reaction: 0.18, error: 0.100, jitter: 0.62, serveT: 0.86, aggression: 0.50, variety: 0.38, reach: 1.70, pace: 0.92 },
-  hard:   { key: 'hard',   name: 'Difficult', speed: 4.5, reaction: 0.07, error: 0.055, jitter: 0.42, serveT: 0.78, aggression: 0.85, variety: 0.62, reach: 1.82, pace: 0.74 },
+  hard:   { key: 'hard',   name: 'Difficult', speed: 4.5, reaction: 0.07, error: 0.075, jitter: 0.42, serveT: 0.78, aggression: 0.85, variety: 0.62, reach: 1.82, pace: 0.74 },
 };
 
 const FORMATS = {
@@ -679,7 +684,7 @@ function inServiceBox(x, y, side, court) {
 // Where a player on this side should meet the ball. Walks the trajectory forward
 // (including its bounce) and stops at the first place the ball is genuinely
 // playable, or at the deepest sensible standing position if it is running away.
-function predictIntercept(ball, side, retreat = 2.2, maxT = 3.2) {
+function predictIntercept(ball, side, retreat = 2.2, standY = null, maxT = 3.2) {
   let x = ball.x, y = ball.y, z = ball.z;
   let vx = ball.vx, vy = ball.vy, vz = ball.vz;
   let bounces = ball.bounces;
@@ -687,6 +692,10 @@ function predictIntercept(ball, side, retreat = 2.2, maxT = 3.2) {
   const dt = 0.008;
   const limit = COURT.halfLen + retreat;
   const hardLimit = COURT.halfLen + 4.8;
+  // Standing inside the court means taking the ball out of the air rather than
+  // backing up behind the baseline to let it bounce.
+  const forward = standY != null && Math.abs(standY) < 9.5;
+  const volleyLine = forward ? Math.max(0.9, Math.abs(standY) - 1.4) : Infinity;
 
   for (let t = 0; t < maxT; t += dt) {
     x += vx * dt;
@@ -708,6 +717,9 @@ function predictIntercept(ball, side, retreat = 2.2, maxT = 3.2) {
     const ay = Math.abs(y);
     if ((ay > limit && z < 2.55) || ay > hardLimit) {
       return { x, y, z, t, bounce: first, deep: true };
+    }
+    if (bounces === 0 && forward && ay >= volleyLine && z > 0.25 && z < 2.30) {
+      return { x, y, z, t, bounce: null, deep: false, volley: true };
     }
     if (bounces >= 1 && vz < 0 && z > 0.28 && z < 1.55) {
       return { x, y, z, t, bounce: first, deep: false };
@@ -1161,38 +1173,64 @@ const sfx = new Sfx();
 
 // ---- input.js ----
 
-// Gesture recogniser. One thumb does everything:
-//   tap                -> standard drive
-//   fast flick upwards -> flat power drive
-//   long slow drag up  -> lob
-//   swipe downwards    -> drop shot
-//   swipe sideways     -> angled slice
-// The horizontal part of any swipe steers the shot left or right.
+// How far up the screen a swipe reaches, as a fraction of its height. These
+// zones are drawn on screen while the thumb is down, so the shot you are about
+// to play is something you can see and adjust rather than guess at.
+const SWIPE = {
+  tap: 0.035,      // below this it is a tap
+  short: 0.05,     // bottom of the drive zone: a short ball
+  lob: 0.34,       // above this the shot becomes a lob
+  flick: 1.6,      // heights per second above which a drive flattens out
+  aimWidth: 0.22,  // sideways travel, as a fraction of screen width, for full aim
+};
+
+// One thumb does everything:
+//   tap                     standard drive into the open court
+//   swipe up                drive; how far up you go sets how deep it lands
+//   flick up fast           the same drive, hit flat and hard
+//   swipe up past the top   lob
+//   swipe down              drop shot
+//   swipe sideways          angled slice
+// The sideways part of any swipe steers the ball across the court.
 function classify(dx, dy, dtMs, w, h) {
   const len = Math.hypot(dx, dy) / h;
+  const up = -dy / h;
   const dt = Math.max(0.04, dtMs / 1000);
-  const speed = len / dt;                      // screen heights per second
-  const aim = clamp(dx / (w * 0.30), -1, 1);
+  const speed = len / dt;
+  const aim = clamp(dx / (w * SWIPE.aimWidth), -1, 1);
+  const base = { aim, len, up, speed };
 
-  if (len < 0.035) return { type: 'drive', aim: 0, power: 0.55, tap: true };
+  if (len < SWIPE.tap) {
+    return { ...base, type: 'drive', aim: 0, tap: true, depth: 0.55, power: 0.7 };
+  }
 
-  const ang = Math.atan2(-dy, dx) * 180 / Math.PI; // 90 = straight up
+  const ang = Math.atan2(-dy, dx) * 180 / Math.PI; // 90 is straight up
 
   if (ang > 32 && ang < 148) {
-    if (speed > 1.45 && len > 0.10) {
-      return { type: 'power', aim, power: clamp(0.7 + len * 1.1, 0.6, 1.25) };
+    if (up >= SWIPE.lob) {
+      return { ...base, type: 'lob', depth: clamp((up - SWIPE.lob) / 0.14, 0, 1), power: 0.9 };
     }
-    if (len > 0.20 && speed < 1.15) {
-      return { type: 'lob', aim, power: clamp(0.6 + len * 0.7, 0.55, 1.15) };
-    }
-    return { type: 'drive', aim, power: clamp(0.55 + len * 1.4, 0.5, 1.2) };
+    const depth = clamp((up - SWIPE.short) / (SWIPE.lob - SWIPE.short), 0, 1);
+    const flat = speed > SWIPE.flick && up > 0.10;
+    return {
+      ...base,
+      type: flat ? 'power' : 'drive',
+      depth,
+      power: clamp(0.6 + depth * 0.5 + (flat ? 0.2 : 0), 0.55, 1.3),
+    };
   }
 
   if (ang < -32 && ang > -148) {
-    return { type: 'drop', aim, power: clamp(0.5 + len * 0.6, 0.45, 1.0) };
+    return { ...base, type: 'drop', depth: clamp((-up - SWIPE.short) / 0.16, 0, 1), power: 0.8 };
   }
 
-  return { type: 'slice', aim: dx >= 0 ? 1 : -1, power: clamp(0.55 + len * 0.9, 0.5, 1.15) };
+  return {
+    ...base,
+    type: 'slice',
+    aim: dx >= 0 ? 1 : -1,
+    depth: clamp((Math.abs(dx) / w - 0.06) / 0.26, 0, 1),
+    power: 0.9,
+  };
 }
 
 class TouchInput {
@@ -1234,7 +1272,7 @@ class TouchInput {
     if (this.el.setPointerCapture) {
       try { this.el.setPointerCapture(e.pointerId); } catch { /* not supported */ }
     }
-    this.handlers.onStart && this.handlers.onStart();
+    this.handlers.onStart && this.handlers.onStart(this.active);
   }
 
   _move(e) {
@@ -1305,7 +1343,7 @@ class AI {
     if (!incoming) {
       // Ball is on its way to the human: recover towards a covering position.
       const cover = this.recoveryX(game);
-      me.moveTowards(cover, me.side * (COURT.halfLen + 0.6), dt, 0.8);
+      me.moveTowards(cover, game.recoveryY(1), dt, 0.85);
       return;
     }
 
@@ -1338,7 +1376,7 @@ class AI {
       return;
     }
 
-    const strike = predictIntercept(ball, 1, 2.2);
+    const strike = predictIntercept(ball, 1, 2.2, me.y);
     if (!strike) return;
 
     // Weaker opponents read the ball less precisely.
@@ -1403,7 +1441,13 @@ class AI {
     if (type === 'drop') targetX = openSide * rand(1.4, 3.4);
     if (type === 'lob') targetX = clamp(-humanX * 0.4, -2.8, 2.8);
 
-    const depth = rand(spec.depth[0], spec.depth[1]);
+    // A mix of depths: mostly deep, but short enough often enough to drag the
+    // other player into the court.
+    const shortBall = type === 'drive' || type === 'slice';
+    const depthRoll = shortBall && chance(0.20 + p.variety * 0.22)
+      ? rand(0.10, 0.45)
+      : rand(0.58, 1.0);
+    const depth = lerp(spec.depth[0], spec.depth[1], depthRoll);
     let targetY = -depth;
 
     // Error: scale the jitter, and occasionally commit a genuine miss.
@@ -1414,7 +1458,7 @@ class AI {
     let forceError = null;
     if (chance(p.error * (1 + stretched * 1.4))) {
       forceError = chance(0.45) ? 'net' : 'long';
-      if (forceError === 'long') targetY -= rand(0.6, 1.8);
+      if (forceError === 'long') targetY = -(COURT.halfLen + rand(0.25, 1.30));
     }
 
     targetX = clamp(targetX, -(COURT.halfSingles + 1.4), COURT.halfSingles + 1.4);
@@ -1452,6 +1496,17 @@ class AI {
 // ---- render.js ----
 
 const LINE = 0.05;
+
+function roundedRect(ctx, x, y, w, h, r) {
+  if (typeof ctx.roundRect === 'function') { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return; }
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
 // How far the camera may pan up, as a fraction of canvas height.
 const FOLLOW_MAX = 0.085;
 const BASELINE_W = 0.10;
@@ -1474,6 +1529,8 @@ class Renderer {
     this.follow = 0;
     this.time = 0;
     this.crowdEnergy = 0.35;
+    this._gaugeCache = new Map();
+    this._chipCache = new Map();
   }
 
   resize() {
@@ -1488,6 +1545,8 @@ class Renderer {
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.cam.resize(w, h);
     this.layerExtra = Math.ceil(h * FOLLOW_MAX) + 8;
+    this._gaugeCache.clear();
+    this._chipCache.clear();
     this._buildLayers();
   }
 
@@ -1726,6 +1785,126 @@ class Renderer {
       this._fillQuad([[x - 0.06, -0.06, 0], [x + 0.06, -0.06, 0], [x + 0.06, -0.06, top], [x - 0.06, -0.06, top]], '#233246');
       this._fillQuad([[x - 0.06, 0.06, 0], [x + 0.06, 0.06, 0], [x + 0.06, 0.06, top], [x - 0.06, 0.06, top]], '#1a2536');
     }
+  }
+
+  // While the thumb is down, show the scale the shot is chosen from: how far up
+  // you drag picks the shot, so it should be something you can see and correct
+  // before you let go, not something you learn by trial and error.
+  //
+  // The panel and its labels are pre-rendered per variant. Drawing six runs of
+  // text every frame of a drag was costing more than the rest of the scene put
+  // together.
+  _gaugeGeom() {
+    const H = this.h;
+    const top = H * 0.31, bottom = H * 0.79;
+    return { top, bottom, w: 44, span: 0.44, pad: 20, height: bottom - top + 40 };
+  }
+
+  _gaugePanel(variant) {
+    let c = this._gaugeCache.get(variant);
+    if (c) return c;
+    const geo = this._gaugeGeom();
+    const yFor = (u) => (geo.bottom - geo.top + geo.pad) - (clamp(u, 0, geo.span) / geo.span) * (geo.bottom - geo.top);
+
+    c = document.createElement('canvas');
+    c.width = Math.round(geo.w * this.dpr);
+    c.height = Math.round(geo.height * this.dpr);
+    const g = c.getContext('2d');
+    g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+    roundedRect(g, 0.5, 0.5, geo.w - 1, geo.height - 1, 12);
+    g.fillStyle = 'rgba(8,16,26,0.58)';
+    g.fill();
+    g.strokeStyle = 'rgba(148,180,214,0.22)';
+    g.lineWidth = 1;
+    g.stroke();
+
+    const isUp = variant !== 'other';
+    const band = (a, b, fill) => {
+      g.fillStyle = fill;
+      g.fillRect(5, yFor(b), geo.w - 10, yFor(a) - yFor(b));
+    };
+    band(SWIPE.short, SWIPE.lob, isUp ? 'rgba(232,255,90,0.13)' : 'rgba(148,180,214,0.07)');
+    band(SWIPE.lob, geo.span, variant === 'lob' ? 'rgba(232,255,90,0.34)' : 'rgba(148,180,214,0.10)');
+
+    g.font = '600 8px ui-sans-serif, system-ui, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillStyle = variant === 'lob' ? '#e8ff5a' : 'rgba(200,216,232,0.65)';
+    g.fillText('LOB', geo.w / 2, (yFor(SWIPE.lob) + yFor(geo.span)) / 2);
+    g.fillStyle = 'rgba(200,216,232,0.55)';
+    g.fillText('DEEP', geo.w / 2, yFor(SWIPE.lob) + 12);
+    g.fillText('SHORT', geo.w / 2, yFor(SWIPE.short) - 10);
+    g.fillStyle = 'rgba(200,216,232,0.4)';
+    g.fillText('TAP', geo.w / 2, yFor(0) + 11);
+
+    this._gaugeCache.set(variant, c);
+    return c;
+  }
+
+  _gaugeChip(label) {
+    let c = this._chipCache.get(label);
+    if (c) return c;
+    const probe = this.ctx;
+    probe.save();
+    probe.font = '800 11px ui-sans-serif, system-ui, sans-serif';
+    const tw = probe.measureText(label).width;
+    probe.restore();
+    const w = tw + 14, h = 22;
+    c = document.createElement('canvas');
+    c.width = Math.round(w * this.dpr);
+    c.height = Math.round(h * this.dpr);
+    const g = c.getContext('2d');
+    g.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    roundedRect(g, 0, 0, w, h, 7);
+    g.fillStyle = 'rgba(8,16,26,0.78)';
+    g.fill();
+    g.font = '800 11px ui-sans-serif, system-ui, sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillStyle = '#e8ff5a';
+    g.fillText(label, w / 2, h / 2 + 0.5);
+    c._w = w;
+    c._h = h;
+    this._chipCache.set(label, c);
+    return c;
+  }
+
+  drawSwipeGauge(drag) {
+    const { ctx } = this;
+    const g = drag.g;
+    const geo = this._gaugeGeom();
+    const onRight = drag.x0 < this.w * 0.5;        // sit opposite the thumb
+    const x = onRight ? this.w - geo.w - 12 : 12;
+    const panelTop = geo.top - geo.pad;
+    const yFor = (u) => geo.bottom - (clamp(u, 0, geo.span) / geo.span) * (geo.bottom - geo.top);
+
+    const isUp = g.type === 'drive' || g.type === 'power' || g.type === 'lob';
+    const variant = g.type === 'lob' ? 'lob' : isUp ? 'up' : 'other';
+    ctx.drawImage(this._gaugePanel(variant), x, panelTop, geo.w, geo.height);
+
+    const my = yFor(isUp ? (g.up || 0) : 0);
+    if (isUp) {
+      ctx.strokeStyle = '#e8ff5a';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(x + 3, my);
+      ctx.lineTo(x + geo.w - 3, my);
+      ctx.stroke();
+      ctx.fillStyle = '#e8ff5a';
+      ctx.beginPath();
+      ctx.arc(x + (onRight ? 3 : geo.w - 3), my, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const label = g.type === 'power' ? 'FLAT DRIVE'
+      : g.type === 'drop' ? 'DROP SHOT'
+      : g.type === 'slice' ? 'ANGLE'
+      : g.type === 'lob' ? 'LOB' : 'DRIVE';
+    const chip = this._gaugeChip(label);
+    const cy = (isUp ? my : geo.bottom) - chip._h / 2;
+    const cx = onRight ? x - 10 - chip._w : x + geo.w + 10;
+    ctx.drawImage(chip, cx, cy, chip._w, chip._h);
   }
 
   drawServeBox(box) {
@@ -2062,10 +2241,12 @@ class Renderer {
     ctx.fillStyle = ctx.strokeStyle;
     ctx.fill();
     ctx.globalAlpha = 1;
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = '600 13px ui-sans-serif, system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(aim.label, p.x, p.y - r * 0.6 - 8);
+    if (aim.showLabel) {
+      ctx.fillStyle = '#f8fafc';
+      ctx.font = '600 13px ui-sans-serif, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(aim.label, p.x, p.y - r * 0.6 - 8);
+    }
     ctx.restore();
   }
 
@@ -2110,6 +2291,7 @@ class Renderer {
     for (const it of items) it.draw();
 
     this.drawEffects(game.effects);
+    if (game.dragState) this.drawSwipeGauge(game.dragState);
     ctx.restore();
   }
 }
@@ -2120,6 +2302,16 @@ class Renderer {
 const SERVE_MOTION = 0.62;
 // A beat to read the opponent's shot before setting off after it.
 const HUMAN_READ = 0.15;
+
+// Practice walks through the shots one at a time, so the gestures are taught
+// rather than left to be discovered.
+const COACH = [
+  { type: 'drive', hint: 'Swipe up for a drive — the higher you drag, the deeper it lands' },
+  { type: 'power', hint: 'Now flick up fast for a flat drive' },
+  { type: 'lob',   hint: 'Now drag up past the LOB band at the top of the gauge' },
+  { type: 'drop',  hint: 'Now swipe down for a drop shot' },
+  { type: 'slice', hint: 'Now swipe sideways for an angle into the tramlines' },
+];
 
 class Game {
   constructor(canvas, hooks = {}) {
@@ -2152,9 +2344,11 @@ class Game {
     this.practiceScore = { rally: 0, best: 0 };
 
     this.input = new TouchInput(canvas, {
-      onDrag: (g) => this.onDrag(g),
+      onStart: (a) => { this.dragState = { g: { type: 'drive', up: 0, aim: 0 }, x0: a.x0, y0: a.y0 }; },
+      onDrag: (g, a) => this.onDrag(g, a),
       onSwipe: (g) => this.onSwipe(g),
     });
+    this.dragState = null;
 
     this._loop = this._loop.bind(this);
   }
@@ -2182,6 +2376,7 @@ class Game {
     this.pendingSwipe = null;
     this.practiceScore = { rally: 0, best: this.practiceScore.best };
     this.practicePoints = 0;
+    this.coach = 0;
     this.serveNumber = 1;
 
     if (config.mode === 'practice') {
@@ -2292,6 +2487,7 @@ class Game {
 
     this.decided = null;
     this.readTimer = 0;
+    this.lastStrikeY = [null, null];
     this.rallyShots = 0;
     this.serveTimer = server === 0 ? 0 : rand(0.7, 1.1);
     this.state = 'serve-ready';
@@ -2301,7 +2497,7 @@ class Game {
 
     if (this.config.mode === 'practice') {
       const where = court === 'deuce' ? 'Deuce court' : 'Ad court';
-      this.prompt(`${where} — swipe up to serve into the marked box`);
+      this.prompt(`${where} — serve, then: ${COACH[this.coach % COACH.length].hint}`);
     } else if (server === 0) {
       const where = court === 'deuce' ? 'Deuce court' : 'Ad court';
       this.prompt(this.serveNumber === 2
@@ -2352,23 +2548,39 @@ class Game {
     this.hooks.onShotLabel && this.hooks.onShotLabel(this.serveNumber === 2 ? 'SECOND SERVE' : 'SERVE');
   }
 
+  // The serve target can go anywhere in the box. Sideways drag moves it across,
+  // upward drag moves it deeper, and how hard you flick sets the pace — so
+  // placement and power are separate choices rather than the same one.
   humanServePlan(g) {
-    const court = this.serveCourt();
-    const wantPos = court !== 'deuce';   // near player's deuce serve lands at x < 0
+    const box = this.serviceBox(0, this.pointCourt);
+    const wantPos = box.wantPositiveX;
     const second = this.serveNumber === 2;
-    const power = clamp(g.power, 0.5, 1.25);
-    const power2 = clamp(power - 0.5, 0, 0.75) / 0.75;
-    const T = second ? lerp(1.00, 0.90, power2) : lerp(0.88, 0.74, power2);
-    const lateral = clamp(g.aim, -1, 1);
-    const inner = second ? 0.9 : 0.5;
-    const outer = second ? 3.2 : 3.8;
-    const mag = lerp(inner, outer, (lateral * (wantPos ? 1 : -1) + 1) / 2);
-    const tx = (wantPos ? 1 : -1) * clamp(mag, 0.3, 3.85);
-    // A harder serve lands deeper in the box. No randomness: what the marker
-    // shows while your thumb is down is exactly where the serve is aimed.
-    const depth = second ? lerp(3.9, 5.4, power2) : lerp(4.5, 6.0, power2);
-    const ty = (this.players[0].side < 0 ? 1 : -1) * depth;
+
+    // Across the box, moving the way your thumb moves: 0 is down the T, 1 is wide.
+    const lateral = clamp(g.aim || 0, -1, 1);
+    const across = wantPos ? (lateral + 1) / 2 : (1 - lateral) / 2;
+    const tx = (wantPos ? 1 : -1) * lerp(0.30, second ? 3.35 : 3.90, across);
+
+    // Up the box: a longer drag lands the serve deeper.
+    const reach = clamp((g.up || 0) / SWIPE.lob, 0, 1);
+    const ty = -this.players[0].side * lerp(2.1, second ? 5.85 : 6.25, reach);
+
+    // Pace from the flick, so aiming carefully does not cost you a big serve.
+    const flick = clamp((g.speed || 0) / 2.2, 0, 1);
+    const drive = 0.4 * reach + 0.6 * flick;
+    const T = second ? lerp(1.02, 0.88, drive) : lerp(0.94, 0.70, drive);
     return { target: { x: tx, y: ty }, T };
+  }
+
+  servePath(plan) {
+    const from = this.serveContact(0);
+    const v = solveShot(from, { x: plan.target.x, y: plan.target.y, z: 0 }, { ...SHOTS.power, clear: 0.10, T: plan.T });
+    const path = [];
+    for (let i = 0; i <= 14; i++) {
+      const t = (v.T * i) / 14;
+      path.push([from.x + v.vx * t, from.y + v.vy * t, Math.max(0, from.z + v.vz * t - 0.5 * G * t * t)]);
+    }
+    return path;
   }
 
   // ------------------------------------------------------------------ striking
@@ -2404,18 +2616,12 @@ class Game {
   humanPlan(g) {
     const spec = SHOTS[g.type];
     const opp = this.players[1];
-    const depthT = clamp((g.power - 0.45) / 0.8, 0, 1);
+    const depthT = clamp(g.depth != null ? g.depth : 0.55, 0, 1);
     let depth = lerp(spec.depth[0], spec.depth[1], depthT);
-    let tx;
+    let tx = g.aim * spec.spread;
     if (g.tap) {
-      tx = clamp(-opp.x * 0.75, -3.0, 3.0);
-      depth = lerp(spec.depth[0], spec.depth[1], 0.55);
-    } else if (g.type === 'slice') {
-      tx = g.aim * lerp(2.9, 4.05, depthT);
-    } else if (g.type === 'drop') {
-      tx = g.aim * 3.1;
-    } else {
-      tx = g.aim * spec.spread;
+      tx = clamp(-opp.x * 0.8, -3.4, 3.4);
+      depth = lerp(spec.depth[0], spec.depth[1], 0.62);
     }
     return { type: g.type, target: { x: tx, y: depth }, power: g.power };
   }
@@ -2427,10 +2633,11 @@ class Game {
     const quality = plan.quality != null ? plan.quality : this.strikeQuality(idx);
 
     const from = { x: b.x, y: b.y, z: clamp(b.z, 0.22, 2.9) };
+    this.lastStrikeY[idx] = b.y;
     const target = { x: plan.target.x, y: plan.target.y, z: 0 };
 
     // Mis-timed contact scatters the ball.
-    const scatter = (1 - quality) * 3.6;
+    const scatter = (1 - quality) * 3.0;
     target.x += rand(-scatter, scatter);
     target.y += rand(-scatter * 0.85, scatter * 0.85) * (idx === 0 ? 1 : -1) * -1;
 
@@ -2468,6 +2675,12 @@ class Game {
       if (perfect) this.addEffect('ring', from.x, from.y, from.z, 0.42, { size: 1.4, colour: '#e8ff5a' });
     }
     if (this.config.mode === 'practice') {
+      const want = COACH[this.coach % COACH.length];
+      if (plan.type === want.type) {
+        this.coach++;
+        this.announce('NICE', spec.label, 'good');
+        this.prompt(`Try: ${COACH[this.coach % COACH.length].hint}`);
+      }
       this.practiceScore.rally++;
       this.practiceScore.best = Math.max(this.practiceScore.best, this.practiceScore.rally);
       this.hooks.onPractice && this.hooks.onPractice(this.practiceScore);
@@ -2476,14 +2689,15 @@ class Game {
 
   // -------------------------------------------------------------------- input
 
-  onDrag(g) {
+  onDrag(g, a) {
+    if (a) this.dragState = { g, x0: a.x0, y0: a.y0 };
     if (this.state === 'rally' && this.ball.lastHitBy !== 0) {
       this.aim = this.previewAim(g);
     } else if (this.state === 'serve-ready' && this.serverIdx() === 0) {
       const plan = this.humanServePlan(g);
       this.aim = {
         x: plan.target.x, y: plan.target.y, label: this.serveNumber === 2 ? 'SECOND SERVE' : 'SERVE',
-        risky: false, path: null,
+        risky: false, path: this.servePath(plan), showLabel: true,
       };
     } else {
       this.aim = null;
@@ -2498,7 +2712,7 @@ class Game {
     if (this.canStrike(0)) {
       from = { x: b.x, y: b.y, z: clamp(b.z, 0.22, 2.4) };
     } else {
-      const s = predictIntercept(b, -1, 2.2);
+      const s = predictIntercept(b, -1, 2.2, this.players[0].y);
       if (!s) return null;
       from = { x: s.x, y: s.y, z: clamp(s.z, 0.3, 1.6) };
     }
@@ -2514,11 +2728,12 @@ class Game {
       path.push([from.x + v.vx * t, from.y + v.vy * t, Math.max(0, from.z + v.vz * t - 0.5 * G * t * t)]);
     }
     const risky = !inSinglesCourt(plan.target.x, ty, -0.15);
-    return { x: plan.target.x, y: ty, label: spec.label, risky, path };
+    return { x: plan.target.x, y: ty, label: spec.label, risky, path, showLabel: false };
   }
 
   onSwipe(g) {
     this.aim = null;
+    this.dragState = null;
     if (!this.running || this.paused) return;
     sfx.ensure();
 
@@ -2808,6 +3023,16 @@ class Game {
     this.beginPoint();
   }
 
+  recoveryY(idx) {
+    const p = this.players[idx];
+    const base = p.side * (COURT.halfLen + 0.55);
+    const struck = this.lastStrikeY[idx];
+    if (struck == null) return base;
+    if (Math.abs(struck) > 9.2) return base;
+    const closed = struck - p.side * 2.6;
+    return p.side < 0 ? clamp(closed, base, -4.2) : clamp(closed, 4.2, base);
+  }
+
   // Human movement: run to the ball automatically, the player supplies the shot.
   updateHuman(dt) {
     const p = this.players[0];
@@ -2818,7 +3043,7 @@ class Game {
     }
     if (b.lastHitBy === 0) {
       const cover = clamp(-this.players[1].x * 0.25, -2.2, 2.2);
-      p.moveTowards(cover, p.side * (COURT.halfLen + 0.55), dt, 0.8);
+      p.moveTowards(cover, this.recoveryY(0), dt, 0.85);
       return;
     }
 
@@ -2838,7 +3063,7 @@ class Game {
       }
     }
 
-    const s = predictIntercept(b, -1, 2.2);
+    const s = predictIntercept(b, -1, 2.2, p.y);
     if (!s) return;
     const ty = clamp(s.y, -(COURT.halfLen + 4.8), -0.85);
     p.moveTowards(s.x, ty, dt, 1);

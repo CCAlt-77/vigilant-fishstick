@@ -1,3 +1,4 @@
 shots/
 node_modules/
 .DS_Store
+dist/_fragment-host.html

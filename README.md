@@ -17,8 +17,10 @@ Screen**. It launches full screen with no browser chrome, and the service worker
 it playable with no signal.
 
 **Single file.** `dist/index.html` is the whole game inlined into one file — useful for
-opening straight off a disk, emailing to yourself, or dropping into any host. Rebuild it
-with `node tools/build.mjs` after changing anything under `js/` or `css/`.
+opening straight off a disk, emailing to yourself, or dropping into any host.
+`dist/artifact.html` is the same bundle without the `<html>`/`<head>`/`<body>` wrapper,
+for hosts that supply their own document skeleton. Rebuild both with
+`node tools/build.mjs` after changing anything under `js/` or `css/`.
 
 **Locally.** It needs to be served over http rather than opened as a `file://` path,
 because it uses ES modules:
@@ -94,6 +96,7 @@ node tools/test-scoring.mjs    # scoring rules: deuce, tiebreaks, set and match 
 node tools/sim.mjs             # headless balance run: rally lengths and win rates per difficulty
 npx http-server -p 8145 -s . & # the browser tests need the site served
 node tools/test-ui.mjs         # menus, tournament flow, pause, saved progress
+node tools/test-dist.mjs       # the bundled builds boot and play like the modular site
 node tools/smoke.mjs           # plays a match in headless Safari-sized Chromium, screenshots
 ```
 

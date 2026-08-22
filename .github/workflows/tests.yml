@@ -1,0 +1,71 @@
+# GitHub Pages already publishes this repository straight from the branch root,
+# so there is nothing here to deploy: every push is live within a minute or two.
+# What this does instead is make sure a push cannot quietly break the game.
+
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+      - claude/iphone-tennis-game-i0fumx
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Tennis scoring
+        run: node tools/test-scoring.mjs
+
+      - name: Serving
+        run: node tools/test-serve.mjs
+
+      - name: Balance, so a tuning change cannot go unnoticed
+        run: node tools/sim.mjs
+
+      - name: The committed bundle matches the source
+        run: |
+          node tools/build.mjs
+          if ! git diff --quiet dist/; then
+            echo "::error::dist/ is out of date. Run 'node tools/build.mjs' and commit the result."
+            git --no-pager diff --stat dist/
+            exit 1
+          fi
+          echo "dist/ is up to date."
+
+      - name: Every file the site needs is present
+        run: |
+          missing=0
+          for f in index.html manifest.webmanifest sw.js .nojekyll \
+                   css/style.css js/main.js icons/icon-180.png icons/icon-192.png; do
+            if [ ! -f "$f" ]; then echo "::error::missing $f"; missing=1; fi
+          done
+          exit $missing
+
+      - name: Where it lands
+        run: |
+          {
+            echo "### Live"
+            echo ""
+            echo "- Game: https://ccalt-77.github.io/vigilant-fishstick/"
+            echo "- Single file: https://ccalt-77.github.io/vigilant-fishstick/dist/"
+            echo ""
+            echo "Pages publishes from this branch's root, so a green run here is already deployed."
+          } >> "$GITHUB_STEP_SUMMARY"

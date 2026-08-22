@@ -65,23 +65,73 @@ jobs:
           git commit -qm "Publish ${GITHUB_SHA:0:7} from ${GITHUB_REF_NAME}"
           git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
 
-      - name: Turn Pages on, if it is not already
+      - name: Point Pages at the gh-pages branch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
+          REPO="${GITHUB_REPOSITORY}"
           BODY='{"source":{"branch":"gh-pages","path":"/"},"build_type":"legacy"}'
-          if gh api "repos/${GITHUB_REPOSITORY}/pages" >/dev/null 2>&1; then
-            echo "Pages is already enabled; making sure it points at gh-pages."
-            echo "$BODY" | gh api -X PUT "repos/${GITHUB_REPOSITORY}/pages" --input - >/dev/null 2>&1 \
-              || echo "::warning::Could not update the Pages source. Check Settings -> Pages."
+
+          echo "::group::Pages configuration before"
+          gh api "repos/${REPO}/pages" > before.json 2> before.err
+          cat before.json before.err
+          echo "::endgroup::"
+
+          SRC=$(jq -r '.source.branch // "none"' before.json 2>/dev/null)
+          BT=$(jq -r '.build_type // "none"' before.json 2>/dev/null)
+          echo "source=${SRC} build_type=${BT}"
+
+          if [ "$SRC" = "none" ] && [ "$BT" = "none" ]; then
+            echo "::group::Enabling Pages"
+            echo "$BODY" | gh api -X POST "repos/${REPO}/pages" --input - 2>&1
+            RC=$?
+            echo "::endgroup::"
+          elif [ "$SRC" = "gh-pages" ] && [ "$BT" = "legacy" ]; then
+            echo "Already publishing from gh-pages."
+            RC=0
           else
-            echo "$BODY" | gh api -X POST "repos/${GITHUB_REPOSITORY}/pages" --input - >/dev/null 2>&1 \
-              && echo "Pages enabled." \
-              || echo "::warning::Could not enable Pages automatically. Set Settings -> Pages -> Deploy from a branch -> gh-pages -> / (root). The branch is already built and waiting."
+            echo "::group::Switching the source to gh-pages"
+            echo "$BODY" | gh api -X PUT "repos/${REPO}/pages" --input - 2>&1
+            RC=$?
+            echo "::endgroup::"
           fi
-          OWNER=$(echo "${GITHUB_REPOSITORY}" | cut -d/ -f1 | tr '[:upper:]' '[:lower:]')
-          REPO=$(echo "${GITHUB_REPOSITORY}" | cut -d/ -f2)
-          echo "### Site: https://${OWNER}.github.io/${REPO}/" >> "$GITHUB_STEP_SUMMARY"
-          echo "Single-file build: https://${OWNER}.github.io/${REPO}/standalone.html" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "::group::Pages configuration after"
+          gh api "repos/${REPO}/pages" 2>&1 | tee after.json
+          echo "::endgroup::"
+
+          # Nudge a build, in case pushing the branch did not start one.
+          gh api -X POST "repos/${REPO}/pages/builds" >/dev/null 2>&1 \
+            && echo "Requested a Pages build." || echo "No build requested (Pages may not be on this source yet)."
+
+          NOW_SRC=$(jq -r '.source.branch // "none"' after.json 2>/dev/null)
+          OWNER=$(echo "${REPO}" | cut -d/ -f1 | tr '[:upper:]' '[:lower:]')
+          NAME=$(echo "${REPO}" | cut -d/ -f2)
+          URL="https://${OWNER}.github.io/${NAME}/"
+
+          {
+            if [ "$NOW_SRC" = "gh-pages" ]; then
+              echo "### The site is publishing"
+              echo ""
+              echo "- Game: ${URL}"
+              echo "- Single file: ${URL}standalone.html"
+              echo ""
+              echo "The first build after enabling can take a couple of minutes."
+            else
+              echo "### One manual step left"
+              echo ""
+              echo "The built site is on the \`gh-pages\` branch, but Pages could not be"
+              echo "repointed at it automatically (it is currently on \`${NOW_SRC}\`)."
+              echo ""
+              echo "In a browser: **Settings -> Pages -> Build and deployment ->"
+              echo "Source: Deploy from a branch -> Branch: gh-pages -> / (root) -> Save**."
+              echo ""
+              echo "Then: ${URL}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$NOW_SRC" != "gh-pages" ]; then
+            echo "::warning::Pages is on '${NOW_SRC}', not gh-pages. See the job summary for the one manual step."
+          fi
           exit 0

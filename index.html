@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Ace Point Tennis</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0d1b2a" />
+<meta name="description" content="One-thumb tennis for iPhone. Swipe for drives, lobs, drop shots and angles." />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Ace Point" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icons/icon-180.png" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="app">
+  <canvas id="court"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="scoreboard">
+      <div class="sb-row" data-row="0">
+        <span class="sb-serve" data-serve="0">●</span>
+        <span class="sb-name" data-name="0">YOU</span>
+        <span class="sb-sets" data-sets="0"></span>
+        <span class="sb-games" data-games="0">0</span>
+        <span class="sb-points" data-points="0">0</span>
+      </div>
+      <div class="sb-row" data-row="1">
+        <span class="sb-serve" data-serve="1">●</span>
+        <span class="sb-name" data-name="1">RIVAL</span>
+        <span class="sb-sets" data-sets="1"></span>
+        <span class="sb-games" data-games="1">0</span>
+        <span class="sb-points" data-points="1">0</span>
+      </div>
+    </div>
+    <button id="btn-pause" aria-label="Pause">❙❙</button>
+    <div id="context"></div>
+    <div id="shot-label"></div>
+    <div id="prompt"></div>
+  </div>
+
+  <div id="announce"><span></span><small></small></div>
+
+  <div id="overlay">
+    <!-- Title -->
+    <section class="screen" id="s-title">
+      <div class="logo">
+        <span class="logo-ball"></span>
+        <h1>ACE<em>POINT</em></h1>
+        <p class="tagline">One thumb. Full tennis.</p>
+      </div>
+      <div class="stack">
+        <button class="btn primary" data-go="s-mode">Play</button>
+        <button class="btn" data-go="s-howto">How to play</button>
+        <button class="btn" data-go="s-records">Records</button>
+        <button class="btn ghost" id="btn-sound">Sound: on</button>
+      </div>
+      <p class="foot">Add to Home Screen for full-screen play.</p>
+    </section>
+
+    <!-- Mode -->
+    <section class="screen" id="s-mode">
+      <h2>Choose a mode</h2>
+      <div class="stack">
+        <button class="card" data-mode="match">
+          <strong>Single Match</strong>
+          <span>One match against one opponent. Pick the length and the difficulty.</span>
+        </button>
+        <button class="card" data-mode="tournament">
+          <strong>Tournament</strong>
+          <span>Four rounds to the trophy. Lose once and you are out.</span>
+        </button>
+        <button class="card" data-mode="practice">
+          <strong>Practice Rally</strong>
+          <span>No score, endless rally. Learn the shot gestures.</span>
+        </button>
+      </div>
+      <button class="btn ghost back" data-back>Back</button>
+    </section>
+
+    <!-- Match setup -->
+    <section class="screen" id="s-setup">
+      <h2 id="setup-title">Single Match</h2>
+      <div class="field">
+        <label>Opponent</label>
+        <div class="seg" id="seg-difficulty"></div>
+        <p class="hint" id="hint-difficulty"></p>
+      </div>
+      <div class="field" id="field-format">
+        <label>Match length</label>
+        <div class="seg vertical" id="seg-format"></div>
+      </div>
+      <button class="btn primary" id="btn-start">Start match</button>
+      <button class="btn ghost back" data-back>Back</button>
+    </section>
+
+    <!-- Tournament picker -->
+    <section class="screen" id="s-tourpick">
+      <h2>Tournaments</h2>
+      <div class="stack" id="tour-list"></div>
+      <button class="btn ghost back" data-back>Back</button>
+    </section>
+
+    <!-- Ladder -->
+    <section class="screen" id="s-ladder">
+      <h2 id="ladder-title">Tournament</h2>
+      <p class="sub" id="ladder-sub"></p>
+      <ol class="ladder" id="ladder-list"></ol>
+      <button class="btn primary" id="btn-play-round">Play round</button>
+      <button class="btn ghost" id="btn-abandon">Abandon tournament</button>
+      <button class="btn ghost back" data-back>Back</button>
+    </section>
+
+    <!-- How to play -->
+    <section class="screen scroll" id="s-howto">
+      <h2>How to play</h2>
+      <p class="sub">You are the player at the bottom of the screen, hitting up the court. Your player runs to the ball on their own — your job is the shot.</p>
+      <ul class="gestures">
+        <li><span class="g">•</span><div><strong>Tap</strong>Standard drive into the open court.</div></li>
+        <li><span class="g">↑</span><div><strong>Flick up fast</strong>Flat power drive, deep and low.</div></li>
+        <li><span class="g">⇧</span><div><strong>Long slow drag up</strong>Lob, high over their head.</div></li>
+        <li><span class="g">↓</span><div><strong>Swipe down</strong>Drop shot, dying just over the net.</div></li>
+        <li><span class="g">↔</span><div><strong>Swipe sideways</strong>Angled slice into the tramlines.</div></li>
+      </ul>
+      <p class="sub">Any swipe's sideways lean steers the ball left or right — swipe up and to the right to drive down the right-hand line.</p>
+      <h3>Timing</h3>
+      <p class="sub">A ring appears around your player when a ball is on the way. Swipe as it reaches you: strike it in the middle of the ring for a clean, accurate shot. Swipe early and it is buffered, so you can commit before the ball arrives.</p>
+      <h3>Serving</h3>
+      <p class="sub">Swipe up to serve; a longer, faster swipe means a bigger serve, and the sideways lean places it wide or down the T. Two serves, as usual — the second is automatically safer.</p>
+      <h3>Scoring</h3>
+      <p class="sub">Normal tennis. 15, 30, 40, deuce and advantage, six games to a set with a tiebreak at 6-6. Quick matches use a short set to four games.</p>
+      <button class="btn ghost back" data-back>Back</button>
+    </section>
+
+    <!-- Records -->
+    <section class="screen" id="s-records">
+      <h2>Records</h2>
+      <div class="records" id="records-list"></div>
+      <button class="btn ghost" id="btn-clear">Clear records</button>
+      <button class="btn ghost back" data-back>Back</button>
+    </section>
+
+    <!-- Pause -->
+    <section class="screen" id="s-pause">
+      <h2>Paused</h2>
+      <p class="sub" id="pause-score"></p>
+      <div class="stack">
+        <button class="btn primary" id="btn-resume">Resume</button>
+        <button class="btn" data-go="s-howto">How to play</button>
+        <button class="btn ghost" id="btn-quit">Quit match</button>
+      </div>
+    </section>
+
+    <!-- Result -->
+    <section class="screen" id="s-result">
+      <h2 id="result-title">Match</h2>
+      <p class="sub" id="result-score"></p>
+      <div class="records" id="result-stats"></div>
+      <div class="stack">
+        <button class="btn primary" id="btn-next">Continue</button>
+        <button class="btn ghost" id="btn-menu">Main menu</button>
+      </div>
+    </section>
+  </div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
